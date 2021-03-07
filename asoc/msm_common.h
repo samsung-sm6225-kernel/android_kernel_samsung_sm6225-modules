@@ -1,4 +1,5 @@
 /* Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -14,6 +15,9 @@
 
 #include <sound/soc.h>
 #include <sound/pcm.h>
+
+#define DEVICE_ENABLE 1
+#define DEVICE_DISABLE 0
 
 enum {
 	MI2S = 0,
