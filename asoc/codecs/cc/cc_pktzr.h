@@ -43,4 +43,6 @@ int cc_pktzr_send_packet(uint32_t opcode, void *req_payload, size_t req_size,
 	void **resp_payload, size_t *resp_size);
 int cc_pktzr_init(struct device *dev);
 void cc_pktzr_deinit(void);
+void cc_pktzr_register_device(void);
+void cc_pktzr_deregister_device(void);
 #endif /* __CC_PKTZR_H_  */

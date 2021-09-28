@@ -168,6 +168,38 @@ err:
 EXPORT_SYMBOL(cc_pktzr_send_packet);
 
 /**
+ * cc_pktzr_deregister_device - Function to deregister to CC IPC driver
+ */
+void cc_pktzr_deregister_device(void)
+{
+	int ret = 0;
+
+	if (!ppriv)
+		return;
+
+	ret = audio_cc_ipc_deregister_device(ppriv->handle, ppriv->srvc_id);
+	if (ret < 0)
+		pr_err("%s: Failed to deregister device\n", __func__);
+}
+EXPORT_SYMBOL(cc_pktzr_deregister_device);
+
+/**
+ * cc_pktzr_register_device - Function to register to CC IPC driver
+ */
+void cc_pktzr_register_device(void)
+{
+	int ret = 0;
+	if (!ppriv)
+		return;
+
+	ret = audio_cc_ipc_register_device(ppriv->srvc_id,
+			ppriv->channel_name, cc_pktzr_recv_cb, &(ppriv->handle));
+	if (ret < 0)
+		pr_err("%s: Failed to register device\n", __func__);
+}
+EXPORT_SYMBOL(cc_pktzr_register_device);
+
+/**
  * cc_pktzr_init - Function to register device
  * @dev: Device Node
  *
@@ -281,7 +313,6 @@ EXPORT_SYMBOL(cc_pktzr_init);
  */
 void cc_pktzr_deinit(void)
 {
-	int ret = 0;
 	if (!ppriv)
 		return;
 

@@ -80,22 +80,29 @@ struct cc_ipc_priv {
 
 	struct mutex mlock;
 	struct device *dev;
-	struct work_struct add_child_dev_work;
 };
 
-struct mutex g_ipriv_lock;
-static struct cc_ipc_priv *g_ipriv[CC_IPC_MAX_DEV] = {0};
+struct cc_ipc_plat_private {
+	struct device *dev;
+	bool is_initial_boot;
+	struct cc_ipc_priv *g_ipriv[CC_IPC_MAX_DEV];
+	struct work_struct add_child_dev_work;
+	struct mutex g_ipriv_lock;
+};
+
+struct cc_ipc_plat_private *cc_ipc_plat_priv;
 
 static void cc_ipc_add_child_dev_func(struct work_struct *work)
 {
 	int ret = 0;
-	struct cc_ipc_priv *ipriv = NULL;
 
-	ipriv = container_of(work, typeof(*ipriv), add_child_dev_work);
-	ret = of_platform_populate(ipriv->dev->of_node, NULL, NULL, ipriv->dev);
-	if (ret)
-		dev_err(ipriv->dev, "%s: failed to add child nodes, ch %s, ret %d\n",
-				 __func__, ipriv->ch_name, ret);
+	ret = of_platform_populate(cc_ipc_plat_priv->dev->of_node, NULL, NULL, cc_ipc_plat_priv->dev);
+	if (ret) {
+		dev_err(cc_ipc_plat_priv->dev, "%s: failed to add child nodes ret %d\n",
+			 __func__, ret);
+		return;
+	}
+	cc_ipc_plat_priv->is_initial_boot = false;
 }
 
 static ssize_t cc_ipc_fread(struct file *file, char __user *buf,
@@ -177,9 +184,9 @@ static int cc_ipc_send_pkt(struct cc_ipc_priv *ipriv, void *pkt, uint32_t pkt_si
 	dev_dbg(ipriv->dev, "%s: ch %s, size %d\n",
 		__func__, ipriv->ch_name, pkt_size);
 
-	mutex_lock(&g_ipriv_lock);
+	mutex_lock(&cc_ipc_plat_priv->g_ipriv_lock);
 	ret = rpmsg_send(ipriv->ch, pkt, pkt_size);
-	mutex_unlock(&g_ipriv_lock);
+	mutex_unlock(&cc_ipc_plat_priv->g_ipriv_lock);
 	if (ret < 0)
 		dev_err_ratelimited(ipriv->dev, "%s: failed, ch %s, ret %d\n",
 				__func__, ipriv->ch_name, ret);
@@ -278,6 +285,31 @@ static int cc_ipc_frelease(struct inode *inode, struct file *file)
 	return 0;
 }
 
+static int cc_ipc_internal_release(struct rpmsg_device *rpdev)
+{
+	struct cc_ipc_priv *ipriv = dev_get_drvdata(&rpdev->dev);
+	struct sk_buff *skb = NULL;
+	unsigned long flags;
+
+	if (!ipriv) {
+		pr_err("%s: Invalid private data\n", __func__);
+		return -EINVAL;
+	}
+
+	pr_debug("%s: ch %s\n", __func__, ipriv->ch_name);
+
+	spin_lock_irqsave(&ipriv->slock_rsp, flags);
+	/* Discard all SKBs */
+	while (!skb_queue_empty(&ipriv->rsp_queue)) {
+		skb = skb_dequeue(&ipriv->rsp_queue);
+		kfree_skb(skb);
+	}
+	spin_unlock_irqrestore(&ipriv->slock_rsp, flags);
+	wake_up_interruptible(&ipriv->rsp_qwait);
+
+	return 0;
+}
+
 static const struct file_operations cc_ipc_fops = {
 	.owner =                THIS_MODULE,
 	.open =                 cc_ipc_fopen,
@@ -303,15 +335,17 @@ int audio_cc_ipc_register_device(int srvc_id, char *channel_name,
 	unsigned long flags;
 	int i = 0, ret = 0;
 
-	mutex_lock(&g_ipriv_lock);
+	pr_debug("%s:\n", __func__);
+
+	mutex_lock(&cc_ipc_plat_priv->g_ipriv_lock);
 	for (i = 0; i < CC_IPC_MAX_DEV; i++) {
-		if ((g_ipriv[i] != NULL) &&
-			!strncmp(channel_name, g_ipriv[i]->ch_name, CC_IPC_NAME_MAX_LEN)) {
-			ipriv = g_ipriv[i];
+		if ((cc_ipc_plat_priv->g_ipriv[i] != NULL) &&
+			!strncmp(channel_name, cc_ipc_plat_priv->g_ipriv[i]->ch_name, CC_IPC_NAME_MAX_LEN)) {
+			ipriv = cc_ipc_plat_priv->g_ipriv[i];
 			break;
 		}
 	}
-	mutex_unlock(&g_ipriv_lock);
+	mutex_unlock(&cc_ipc_plat_priv->g_ipriv_lock);
 
 	if (ipriv == NULL) {
 		ret = -ENODEV;
@@ -348,6 +382,8 @@ int audio_cc_ipc_deregister_device(void *handle, int srvc_id)
 	unsigned long flags;
 	int ret = -ENOENT;
 	int i = 0;
+
+	pr_debug("%s:\n", __func__);
 
 	if (!ipriv)
 		return ret;
@@ -508,27 +544,29 @@ static int cc_ipc_rpmsg_probe(struct rpmsg_device *rpdev)
 	struct cc_ipc_priv *ipriv = NULL;
 	int itr = 0;
 
-	mutex_lock(&g_ipriv_lock);
+	dev_dbg(dev, "%s:\n", __func__);
+
+	mutex_lock(&cc_ipc_plat_priv->g_ipriv_lock);
 	for (itr = 0; itr < CC_IPC_MAX_DEV; itr ++) {
-		if (g_ipriv[itr] == NULL)
+		if (cc_ipc_plat_priv->g_ipriv[itr] == NULL)
 			break;
 	}
 
 	if (itr >= CC_IPC_MAX_DEV) {
 		dev_err(dev, "Maximum device count reached \n");
-		mutex_unlock(&g_ipriv_lock);
+		mutex_unlock(&cc_ipc_plat_priv->g_ipriv_lock);
 		return -ENODEV;
 	}
 
 	ipriv = devm_kzalloc(dev, sizeof(*ipriv), GFP_KERNEL);
 	if (!ipriv) {
-		mutex_unlock(&g_ipriv_lock);
+		mutex_unlock(&cc_ipc_plat_priv->g_ipriv_lock);
 		return -ENOMEM;
 	}
 
-	g_ipriv[itr] = ipriv;
+	cc_ipc_plat_priv->g_ipriv[itr] = ipriv;
 
-	mutex_unlock(&g_ipriv_lock);
+	mutex_unlock(&cc_ipc_plat_priv->g_ipriv_lock);
 
 	mutex_init(&ipriv->mlock);
 	spin_lock_init(&ipriv->slock_rsp);
@@ -554,15 +592,15 @@ static int cc_ipc_rpmsg_probe(struct rpmsg_device *rpdev)
 
 	dev_set_drvdata(dev, ipriv);
 
-	INIT_WORK(&ipriv->add_child_dev_work, cc_ipc_add_child_dev_func);
-	schedule_work(&ipriv->add_child_dev_work);
+	if (cc_ipc_plat_priv->is_initial_boot)
+		schedule_work(&cc_ipc_plat_priv->add_child_dev_work);
 
 	return 0;
 
 cleanup:
-	mutex_lock(&g_ipriv_lock);
-	g_ipriv[itr] = NULL;
-	mutex_unlock(&g_ipriv_lock);
+	mutex_lock(&cc_ipc_plat_priv->g_ipriv_lock);
+	cc_ipc_plat_priv->g_ipriv[itr] = NULL;
+	mutex_unlock(&cc_ipc_plat_priv->g_ipriv_lock);
 	mutex_destroy(&ipriv->mlock);
 
 	return ret;
@@ -574,9 +612,10 @@ static void cc_ipc_rpmsg_remove(struct rpmsg_device *rpdev)
 	struct cc_ipc_priv *ipriv = dev_get_drvdata(dev);
 	int i = 0;
 
-	of_platform_depopulate(dev);
+	dev_dbg(dev, "%s:\n", __func__);
 
-	if (ipriv) 	{
+	if (ipriv) {
+		cc_ipc_internal_release(rpdev);
 		cdev_del(&ipriv->cdev.cdev);
 		device_destroy(ipriv->cdev.cls, ipriv->cdev.dev_num);
 		class_destroy(ipriv->cdev.cls);
@@ -587,14 +626,15 @@ static void cc_ipc_rpmsg_remove(struct rpmsg_device *rpdev)
 		dev_dbg(dev, "%s: unregistered char dev, ch %s, cdev_name %s\n",
 			__func__, ipriv->ch_name, ipriv->cdev_name);
 
-		mutex_lock(&g_ipriv_lock);
+		mutex_lock(&cc_ipc_plat_priv->g_ipriv_lock);
 		for (i = 0; i < CC_IPC_MAX_DEV; i++) {
-			if (g_ipriv[i] == ipriv)	{
-				g_ipriv[i] = NULL;
+			if (cc_ipc_plat_priv->g_ipriv[i] == ipriv)	{
+				devm_kfree(dev, ipriv);
+				cc_ipc_plat_priv->g_ipriv[i] = NULL;
 				break;
 			}
 		}
-		mutex_unlock(&g_ipriv_lock);
+		mutex_unlock(&cc_ipc_plat_priv->g_ipriv_lock);
 	}
 }
 
@@ -614,22 +654,70 @@ static struct rpmsg_driver cc_ipc_rpmsg_driver = {
 	},
 };
 
-static int __init audio_cc_ipc_init(void)
+static int audio_cc_ipc_platform_driver_probe(struct platform_device *pdev)
 {
 	int ret = 0;
+
+	pr_debug("%s",__func__);
+
+	cc_ipc_plat_priv = devm_kzalloc(&pdev->dev, sizeof(struct cc_ipc_plat_private), GFP_KERNEL);
+	if (!cc_ipc_plat_priv)
+		return -ENOMEM;
+
+	cc_ipc_plat_priv->dev = &pdev->dev;
+
+	mutex_init(&cc_ipc_plat_priv->g_ipriv_lock);
+
+	INIT_WORK(&cc_ipc_plat_priv->add_child_dev_work, cc_ipc_add_child_dev_func);
 
 	ret = register_rpmsg_driver(&cc_ipc_rpmsg_driver);
 	if (ret < 0)
 		pr_err("audio_cc_ipc: failed to register rpmsg driver\n");
-	mutex_init(&g_ipriv_lock);
+
+	cc_ipc_plat_priv->is_initial_boot = true;
+
+	return ret;
+}
+
+static int audio_cc_ipc_platform_driver_remove(struct platform_device *pdev)
+{
+	pr_debug("%s",__func__);
+
+	unregister_rpmsg_driver(&cc_ipc_rpmsg_driver);
+	mutex_destroy(&cc_ipc_plat_priv->g_ipriv_lock);
+	cc_ipc_plat_priv = NULL;
+	return 0;
+}
+
+static const struct of_device_id audio_cc_ipc_of_match[]  = {
+	{ .compatible = "qcom,audio-cc-ipc-platform", },
+	{},
+};
+
+static struct platform_driver audio_cc_ipc_driver = {
+	.probe = audio_cc_ipc_platform_driver_probe,
+	.remove = audio_cc_ipc_platform_driver_remove,
+	.driver = {
+		.name = "audio-cc-ipc-platform",
+		.owner = THIS_MODULE,
+		.of_match_table = audio_cc_ipc_of_match,
+	}
+};
+
+static int __init audio_cc_ipc_init(void)
+{
+	int ret = 0;
+
+	ret = platform_driver_register(&audio_cc_ipc_driver);
+	if (ret < 0)
+		pr_err("audio_cc_ipc: failed to register plat driver\n");
 
 	return ret;
 }
 
 static void __exit audio_cc_ipc_exit(void)
 {
-	mutex_destroy(&g_ipriv_lock);
-	unregister_rpmsg_driver(&cc_ipc_rpmsg_driver);
+	platform_driver_unregister(&audio_cc_ipc_driver);
 }
 
 module_init(audio_cc_ipc_init);
