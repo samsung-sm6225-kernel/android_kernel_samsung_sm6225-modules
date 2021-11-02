@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2018-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2018-2019, 2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _SND_EVENT_H_
@@ -22,6 +23,9 @@ struct snd_event_ops {
 int snd_event_client_register(struct device *dev,
 			      const struct snd_event_ops *snd_ev_ops,
 			      void *data);
+int snd_event_client_register_v2(struct device *dev,
+			      const struct snd_event_ops *snd_ev_ops,
+			      void *data, int domain);
 int snd_event_client_deregister(struct device *dev);
 int snd_event_master_register(struct device *dev,
 			      const struct snd_event_ops *ops,
@@ -29,6 +33,7 @@ int snd_event_master_register(struct device *dev,
 			      void *data);
 int snd_event_master_deregister(struct device *dev);
 int snd_event_notify(struct device *dev, unsigned int state);
+int snd_event_notify_v2(struct device *dev, unsigned int state, int domain);
 
 void snd_event_mstr_add_client(struct snd_event_clients **snd_clients,
 			    int (*compare)(struct device *, void *),
@@ -41,6 +46,12 @@ static inline bool is_snd_event_fwk_enabled(void)
 static inline int snd_event_client_register(struct device *dev,
 			      const struct snd_event_ops *snd_ev_ops,
 			      void *data)
+{
+	return 0;
+}
+static inline int snd_event_client_register_v2(struct device *dev,
+			      const struct snd_event_ops *snd_ev_ops,
+			      void *data, int domain)
 {
 	return 0;
 }
@@ -60,6 +71,10 @@ static inline int snd_event_master_deregister(struct device *dev)
 	return 0;
 }
 static inline int snd_event_notify(struct device *dev, unsigned int state)
+{
+	return 0;
+}
+static inline int snd_event_notify_v2(struct device *dev, unsigned int state, int domain)
 {
 	return 0;
 }
