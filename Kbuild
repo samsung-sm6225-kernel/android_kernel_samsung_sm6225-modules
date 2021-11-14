@@ -6,6 +6,11 @@ ifeq ($(CONFIG_ARCH_WAIPIO), y)
 	LINUX_INC += -include $(TOUCH_ROOT)/config/gki_waipiotouchconf.h
 endif
 
+#ifeq ($(CONFIG_ARCH_KALAMA), y)
+	include $(TOUCH_ROOT)/config/gki_kalamatouch.conf
+	LINUX_INC += -include $(TOUCH_ROOT)/config/gki_kalamatouchconf.h
+#endif
+
 LINUX_INC +=	-Iinclude/linux \
 		-Iinclude/linux/drm \
 		-Iinclude/linux/gunyah \
