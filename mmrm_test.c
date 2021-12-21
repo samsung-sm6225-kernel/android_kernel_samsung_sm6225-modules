@@ -195,13 +195,18 @@ static int mmrm_test_probe(struct platform_device *pdev)
 	soc_id = socinfo_get_id();
 	switch (soc_id) {
 	case 415: /* LAHAINA */
-		test_mmrm_client(pdev, MMRM_TEST_LAHAINA, MMRM_TEST_LAHAINA_NUM_CLK_CLIENTS);
+		test_mmrm_client(pdev, MMRM_TEST_LAHAINA_NUM_CLK_CLIENTS);
 //		test_mmrm_concurrent_client_cases(pdev, all_lahaina_testcases);
 		break;
 	case 457: /* WAIPIO */
-		test_mmrm_client(pdev, MMRM_TEST_WAIPIO, MMRM_TEST_WAIPIO_NUM_CLK_CLIENTS);
+		test_mmrm_client(pdev, MMRM_TEST_WAIPIO_NUM_CLK_CLIENTS);
 		test_mmrm_concurrent_client_cases(pdev, waipio_testcases, waipio_testcases_count);
 		test_mmrm_switch_volt_corner_client_testcases(pdev, waipio_cornercase_testcases, waipio_cornercase_testcases_count);
+		break;
+	case 554: /* NEO */
+		test_mmrm_client(pdev, MMRM_TEST_NEO_NUM_CLK_CLIENTS);
+		test_mmrm_concurrent_client_cases(pdev, neo_testcases, neo_testcases_count);
+		test_mmrm_switch_volt_corner_client_testcases(pdev, neo_cornercase_testcases, neo_cornercase_testcases_count);
 		break;
 	default:
 		pr_info("%s: Not supported for soc_id %d [Target %s]\n",
