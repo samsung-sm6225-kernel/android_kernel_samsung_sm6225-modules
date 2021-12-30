@@ -132,11 +132,11 @@ struct frame_head {
 };
 
 struct goodix_fw_version {
-	u8 rom_pid[6];               /* rom PID */
-	u8 rom_vid[3];               /* Mask VID */
+	u8 rom_pid[6];      /* rom PID */
+	u8 rom_vid[3];      /* Mask VID */
 	u8 rom_vid_reserved;
-	u8 patch_pid[8];              /* Patch PID */
-	u8 patch_vid[4];              /* Patch VID */
+	u8 patch_pid[8];    /* Patch PID */
+	u8 patch_vid[4];    /* Patch VID */
 	u8 patch_vid_reserved;
 	u8 sensor_id;
 	u8 reserved[2];
@@ -295,13 +295,13 @@ struct goodix_ts_board_data {
 
 enum goodix_fw_update_mode {
 	UPDATE_MODE_DEFAULT = 0,
-	UPDATE_MODE_FORCE = (1<<0), /* force update mode */
-	UPDATE_MODE_BLOCK = (1<<1), /* update in block mode */
-	UPDATE_MODE_FLASH_CFG = (1<<2), /* reflash config */
-	UPDATE_MODE_SRC_SYSFS = (1<<4), /* firmware file from sysfs */
-	UPDATE_MODE_SRC_HEAD = (1<<5), /* firmware file from head file */
-	UPDATE_MODE_SRC_REQUEST = (1<<6), /* request firmware */
-	UPDATE_MODE_SRC_ARGS = (1<<7), /* firmware data from function args */
+	UPDATE_MODE_FORCE = (1 << 0), /* force update mode */
+	UPDATE_MODE_BLOCK = (1 << 1), /* update in block mode */
+	UPDATE_MODE_FLASH_CFG = (1 << 2), /* reflash config */
+	UPDATE_MODE_SRC_SYSFS = (1 << 4), /* firmware file from sysfs */
+	UPDATE_MODE_SRC_HEAD = (1 << 5), /* firmware file from head file */
+	UPDATE_MODE_SRC_REQUEST = (1 << 6), /* request firmware */
+	UPDATE_MODE_SRC_ARGS = (1 << 7), /* firmware data from function args */
 };
 
 #define MAX_CMD_DATA_LEN 10
@@ -409,7 +409,7 @@ struct goodix_bus_interface {
 	int ic_type;
 	struct device *dev;
 	int (*read)(struct device *dev, unsigned int addr,
-			 unsigned char *data, unsigned int len);
+			unsigned char *data, unsigned int len);
 	int (*write)(struct device *dev, unsigned int addr,
 			unsigned char *data, unsigned int len);
 };
@@ -582,8 +582,8 @@ struct goodix_ext_attribute {
 /* external attrs helper macro */
 #define __EXTMOD_ATTR(_name, _mode, _show, _store)	{	\
 	.attr = {.name = __stringify(_name), .mode = _mode },	\
-	.show   = _show,	\
-	.store  = _store,	\
+	.show  = _show,	\
+	.store = _store,	\
 }
 
 /* external attrs helper macro, used to define external attrs */

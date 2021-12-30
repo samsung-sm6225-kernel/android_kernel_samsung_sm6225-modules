@@ -47,7 +47,7 @@ static int __do_register_ext_module(struct goodix_ext_module *module)
 	/* prority level *must* be set */
 	if (module->priority == EXTMOD_PRIO_RESERVED) {
 		ts_err("Priority of module [%s] needs to be set",
-		       module->name);
+			module->name);
 		return -EINVAL;
 	}
 	mutex_lock(&goodix_modules.mutex);
@@ -77,7 +77,7 @@ static int __do_register_ext_module(struct goodix_ext_module *module)
 		if (module->funcs->init(goodix_modules.core_data,
 					module) < 0) {
 			ts_err("Module [%s] init error",
-			       module->name ? module->name : " ");
+				module->name ? module->name : " ");
 			mutex_unlock(&goodix_modules.mutex);
 			return -EFAULT;
 		}
@@ -439,8 +439,8 @@ static int goodix_ts_convert_0x_data(const u8 *buf, int buf_size,
 
 /* send config */
 static ssize_t goodix_ts_send_cfg_store(struct device *dev,
-						struct device_attribute *attr,
-						const char *buf, size_t count)
+					struct device_attribute *attr,
+					const char *buf, size_t count)
 {
 	struct goodix_ts_core *core_data = dev_get_drvdata(dev);
 	struct goodix_ts_hw_ops *hw_ops = core_data->hw_ops;
@@ -458,9 +458,8 @@ static ssize_t goodix_ts_send_cfg_store(struct device *dev,
 		ts_err("cfg file [%s] not available,errno:%d",
 			GOODIX_DEFAULT_CFG_NAME, ret);
 		goto exit;
-	} else {
+	} else
 		ts_info("cfg file [%s] is ready", GOODIX_DEFAULT_CFG_NAME);
-	}
 
 	config = kzalloc(sizeof(*config), GFP_KERNEL);
 	if (!config)
@@ -540,11 +539,11 @@ static ssize_t goodix_ts_reg_rw_store(struct device *dev,
 		goto err_out;
 	}
 
-	if (buf[0] == 'r') {
+	if (buf[0] == 'r')
 		rw_flag = 1;
-	} else if (buf[0] == 'w') {
+	else if (buf[0] == 'w')
 		rw_flag = 2;
-	} else {
+	else {
 		ts_err("string must start with 'r/w'");
 		goto err_out;
 	}
@@ -634,15 +633,13 @@ static ssize_t goodix_ts_irq_info_show(struct device *dev,
 
 	offset += r;
 	r = snprintf(&buf[offset], PAGE_SIZE - offset, "state:%s\n",
-		     atomic_read(&core_data->irq_enabled) ?
-		     "enabled" : "disabled");
+			atomic_read(&core_data->irq_enabled) ? "enabled" : "disabled");
 	if (r < 0)
 		return -EINVAL;
 
 	desc = irq_to_desc(core_data->irq);
 	offset += r;
-	r = snprintf(&buf[offset], PAGE_SIZE - offset, "disable-depth:%d\n",
-		     desc->depth);
+	r = snprintf(&buf[offset], PAGE_SIZE - offset, "disable-depth:%d\n", desc->depth);
 	if (r < 0)
 		return -EINVAL;
 
@@ -690,8 +687,7 @@ static ssize_t goodix_ts_esd_info_show(struct device *dev,
 	int r = 0;
 
 	r = snprintf(buf, PAGE_SIZE, "state:%s\n",
-		     atomic_read(&ts_esd->esd_on) ?
-		     "enabled" : "disabled");
+			atomic_read(&ts_esd->esd_on) ? "enabled" : "disabled");
 
 	return r;
 }
@@ -713,14 +709,13 @@ static ssize_t goodix_ts_esd_info_store(struct device *dev,
 
 /* debug level show */
 static ssize_t goodix_ts_debug_log_show(struct device *dev,
-				       struct device_attribute *attr,
-				       char *buf)
+					struct device_attribute *attr,
+					char *buf)
 {
 	int r = 0;
 
 	r = snprintf(buf, PAGE_SIZE, "state:%s\n",
-		    debug_log_flag ?
-		    "enabled" : "disabled");
+			debug_log_flag ? "enabled" : "disabled");
 
 	return r;
 }
@@ -929,28 +924,28 @@ static int goodix_parse_dt_resolution(struct device_node *node,
 	int ret;
 
 	ret = of_property_read_u32(node, "goodix,panel-max-x",
-				 &board_data->panel_max_x);
+				&board_data->panel_max_x);
 	if (ret) {
 		ts_err("failed get panel-max-x");
 		return ret;
 	}
 
 	ret = of_property_read_u32(node, "goodix,panel-max-y",
-				 &board_data->panel_max_y);
+				&board_data->panel_max_y);
 	if (ret) {
 		ts_err("failed get panel-max-y");
 		return ret;
 	}
 
 	ret = of_property_read_u32(node, "goodix,panel-max-w",
-				 &board_data->panel_max_w);
+				&board_data->panel_max_w);
 	if (ret) {
 		ts_err("failed get panel-max-w");
 		return ret;
 	}
 
 	ret = of_property_read_u32(node, "goodix,panel-max-p",
-				 &board_data->panel_max_p);
+				&board_data->panel_max_p);
 	if (ret) {
 		ts_err("failed get panel-max-p, use default");
 		board_data->panel_max_p = GOODIX_PEN_MAX_PRESSURE;
@@ -1022,7 +1017,7 @@ static int goodix_parse_dt(struct device_node *node,
 	if (!r) {
 		ts_info("avdd name from dt: %s", name_tmp);
 		if (strlen(name_tmp) < sizeof(board_data->avdd_name))
-			strncpy(board_data->avdd_name,
+			strlcpy(board_data->avdd_name,
 				name_tmp, sizeof(board_data->avdd_name));
 		else
 			ts_info("invalied avdd name length: %ld > %ld",
@@ -1035,7 +1030,7 @@ static int goodix_parse_dt(struct device_node *node,
 	if (!r) {
 		ts_info("iovdd name from dt: %s", name_tmp);
 		if (strlen(name_tmp) < sizeof(board_data->iovdd_name))
-			strncpy(board_data->iovdd_name,
+			strlcpy(board_data->iovdd_name,
 				name_tmp, sizeof(board_data->iovdd_name));
 		else
 			ts_info("invalied iovdd name length: %ld > %ld",
@@ -1047,12 +1042,12 @@ static int goodix_parse_dt(struct device_node *node,
 	r = of_property_read_string(node, "goodix,firmware-name", &name_tmp);
 	if (!r) {
 		ts_info("firmware name from dt: %s", name_tmp);
-		strncpy(board_data->fw_name,
+		strlcpy(board_data->fw_name,
 				name_tmp, sizeof(board_data->fw_name));
 	} else {
 		ts_info("can't find firmware name, use default: %s",
 				TS_DEFAULT_FIRMWARE);
-		strncpy(board_data->fw_name,
+		strlcpy(board_data->fw_name,
 				TS_DEFAULT_FIRMWARE,
 				sizeof(board_data->fw_name));
 	}
@@ -1061,12 +1056,12 @@ static int goodix_parse_dt(struct device_node *node,
 	r = of_property_read_string(node, "goodix,config-name", &name_tmp);
 	if (!r) {
 		ts_info("config name from dt: %s", name_tmp);
-		strncpy(board_data->cfg_bin_name, name_tmp,
+		strlcpy(board_data->cfg_bin_name, name_tmp,
 				sizeof(board_data->cfg_bin_name));
 	} else {
 		ts_info("can't find config name, use default: %s",
 				TS_DEFAULT_CFG_BIN);
-		strncpy(board_data->cfg_bin_name,
+		strlcpy(board_data->cfg_bin_name,
 				TS_DEFAULT_CFG_BIN,
 				sizeof(board_data->cfg_bin_name));
 	}
@@ -1175,13 +1170,13 @@ static int goodix_ts_request_handle(struct goodix_ts_core *cd,
 		ret = hw_ops->reset(cd, GOODIX_NORMAL_RESET_DELAY_MS);
 	else
 		ts_info("can not handle request type 0x%x",
-			  ts_event->request_code);
+			ts_event->request_code);
 	if (ret)
 		ts_err("failed handle request 0x%x",
-			 ts_event->request_code);
+			ts_event->request_code);
 	else
 		ts_info("success handle ic request 0x%x",
-			  ts_event->request_code);
+			ts_event->request_code);
 	return ret;
 }
 
@@ -1257,11 +1252,11 @@ static int goodix_ts_irq_setup(struct goodix_ts_core *core_data)
 
 	ts_info("IRQ:%u,flags:%d", core_data->irq, (int)ts_bdata->irq_flags);
 	ret = devm_request_threaded_irq(&core_data->pdev->dev,
-				      core_data->irq, NULL,
-				      goodix_ts_threadirq_func,
-				      ts_bdata->irq_flags | IRQF_ONESHOT,
-				      GOODIX_CORE_DRIVER_NAME,
-				      core_data);
+					core_data->irq, NULL,
+					goodix_ts_threadirq_func,
+					ts_bdata->irq_flags | IRQF_ONESHOT,
+					GOODIX_CORE_DRIVER_NAME,
+					core_data);
 	if (ret < 0)
 		ts_err("Failed to requeset threaded irq:%d", ret);
 	else
@@ -1283,17 +1278,15 @@ static int goodix_ts_power_init(struct goodix_ts_core *core_data)
 
 	ts_info("Power init");
 	if (strlen(ts_bdata->avdd_name)) {
-		core_data->avdd = devm_regulator_get(dev,
-				 ts_bdata->avdd_name);
+		core_data->avdd = devm_regulator_get(dev, ts_bdata->avdd_name);
 		if (IS_ERR_OR_NULL(core_data->avdd)) {
 			ret = PTR_ERR(core_data->avdd);
 			ts_err("Failed to get regulator avdd:%d", ret);
 			core_data->avdd = NULL;
 			return ret;
 		}
-	} else {
+	} else
 		ts_info("Avdd name is NULL");
-	}
 
 	if (strlen(ts_bdata->iovdd_name)) {
 		core_data->iovdd = devm_regulator_get(dev,
@@ -1303,9 +1296,8 @@ static int goodix_ts_power_init(struct goodix_ts_core *core_data)
 			ts_err("Failed to get regulator iovdd:%d", ret);
 			core_data->iovdd = NULL;
 		}
-	} else {
+	} else
 		ts_info("iovdd name is NULL");
-	}
 
 	return ret;
 }
@@ -1505,7 +1497,7 @@ static int goodix_ts_pen_dev_config(struct goodix_ts_core *core_data)
 	input_set_abs_params(pen_dev, ABS_X, 0, ts_bdata->panel_max_x, 0, 0);
 	input_set_abs_params(pen_dev, ABS_Y, 0, ts_bdata->panel_max_y, 0, 0);
 	input_set_abs_params(pen_dev, ABS_PRESSURE, 0,
-			     ts_bdata->panel_max_p, 0, 0);
+			ts_bdata->panel_max_p, 0, 0);
 	input_set_abs_params(pen_dev, ABS_TILT_X,
 			-GOODIX_PEN_MAX_TILT, GOODIX_PEN_MAX_TILT, 0, 0);
 	input_set_abs_params(pen_dev, ABS_TILT_Y,
@@ -1723,8 +1715,7 @@ static int goodix_ts_suspend(struct goodix_ts_core *core_data)
 			if (!ext_module->funcs->before_suspend)
 				continue;
 
-			ret = ext_module->funcs->before_suspend(core_data,
-							      ext_module);
+			ret = ext_module->funcs->before_suspend(core_data, ext_module);
 			if (ret == EVT_CANCEL_SUSPEND) {
 				mutex_unlock(&goodix_modules.mutex);
 				ts_info("Canceled by module:%s",
@@ -1747,8 +1738,7 @@ static int goodix_ts_suspend(struct goodix_ts_core *core_data)
 			if (!ext_module->funcs->after_suspend)
 				continue;
 
-			ret = ext_module->funcs->after_suspend(core_data,
-							     ext_module);
+			ret = ext_module->funcs->after_suspend(core_data, ext_module);
 			if (ret == EVT_CANCEL_SUSPEND) {
 				mutex_unlock(&goodix_modules.mutex);
 				ts_info("Canceled by module:%s",
@@ -1786,16 +1776,14 @@ static int goodix_ts_resume(struct goodix_ts_core *core_data)
 	mutex_lock(&goodix_modules.mutex);
 	if (!list_empty(&goodix_modules.head)) {
 		list_for_each_entry_safe(ext_module, next,
-					 &goodix_modules.head, list) {
+					&goodix_modules.head, list) {
 			if (!ext_module->funcs->before_resume)
 				continue;
 
-			ret = ext_module->funcs->before_resume(core_data,
-					ext_module);
+			ret = ext_module->funcs->before_resume(core_data, ext_module);
 			if (ret == EVT_CANCEL_RESUME) {
 				mutex_unlock(&goodix_modules.mutex);
-				ts_info("Canceled by module:%s",
-					ext_module->name);
+				ts_info("Canceled by module:%s", ext_module->name);
 				goto out;
 			}
 		}
@@ -1809,12 +1797,11 @@ static int goodix_ts_resume(struct goodix_ts_core *core_data)
 	mutex_lock(&goodix_modules.mutex);
 	if (!list_empty(&goodix_modules.head)) {
 		list_for_each_entry_safe(ext_module, next,
-					 &goodix_modules.head, list) {
+					&goodix_modules.head, list) {
 			if (!ext_module->funcs->after_resume)
 				continue;
 
-			ret = ext_module->funcs->after_resume(core_data,
-							    ext_module);
+			ret = ext_module->funcs->after_resume(core_data, ext_module);
 			if (ret == EVT_CANCEL_RESUME) {
 				mutex_unlock(&goodix_modules.mutex);
 				ts_info("Canceled by module:%s",
@@ -2114,7 +2101,7 @@ static int goodix_start_later_init(struct goodix_ts_core *ts_core)
 				ts_core, "goodix_init_thread");
 	if (IS_ERR_OR_NULL(init_thrd)) {
 		ts_err("Failed to create update thread:%ld",
-		       PTR_ERR(init_thrd));
+			PTR_ERR(init_thrd));
 		return -EFAULT;
 	}
 	return 0;

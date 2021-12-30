@@ -367,7 +367,7 @@ static int goodix_parse_firmware(struct firmware_data *fw_data)
 
 	if (fw_summary->subsys_num > FW_SUBSYS_MAX_NUM) {
 		ts_err("Bad firmware, invalid subsys num: %d",
-		       fw_summary->subsys_num);
+			fw_summary->subsys_num);
 		r = -EINVAL;
 		goto err_size;
 	}
@@ -380,10 +380,10 @@ static int goodix_parse_firmware(struct firmware_data *fw_data)
 
 		fw_summary->subsys[i].type = firmware->data[info_offset];
 		fw_summary->subsys[i].size =
-		    le32_to_cpup((__le32 *)&firmware->data[info_offset + 1]);
+			le32_to_cpup((__le32 *)&firmware->data[info_offset + 1]);
 
 		fw_summary->subsys[i].flash_addr =
-		    le32_to_cpup((__le32 *)&firmware->data[info_offset + 5]);
+			le32_to_cpup((__le32 *)&firmware->data[info_offset + 5]);
 		if (fw_offset > firmware->size) {
 			ts_err("Sybsys offset exceed Firmware size");
 			goto err_size;
@@ -1082,20 +1082,20 @@ static ssize_t goodix_sysfs_result_show(
 
 	switch (fw_ctrl->status) {
 	case UPSTA_PREPARING:
-		sprintf(str, "preparing");
+		scnprintf(str, ARRAY_SIZE(str), "preparing");
 		break;
 	case UPSTA_UPDATING:
-		sprintf(str, "updating");
+		scnprintf(str, ARRAY_SIZE(str), "updating");
 		break;
 	case UPSTA_SUCCESS:
-		sprintf(str, "success");
+		scnprintf(str, ARRAY_SIZE(str), "success");
 		break;
 	case UPSTA_FAILED:
-		sprintf(str, "failed");
+		scnprintf(str, ARRAY_SIZE(str), "failed");
 		break;
 	case UPSTA_NOTWORK:
 	default:
-		sprintf(str, "notwork");
+		scnprintf(str, ARRAY_SIZE(str), "notwork");
 		break;
 	}
 
