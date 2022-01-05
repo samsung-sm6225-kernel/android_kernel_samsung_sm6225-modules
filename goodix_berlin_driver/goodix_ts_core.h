@@ -500,8 +500,27 @@ struct goodix_ts_core {
 	struct notifier_block ts_notifier;
 	struct goodix_ts_esd ts_esd;
 
-#if IS_ENABLED(CONFIG_FB)
+#if defined(CONFIG_DRM)
 	struct notifier_block fb_notifier;
+	void *notifier_cookie;
+	const char *touch_environment;
+#elif defined(CONFIG_FB)
+	struct notifier_block fb_notifier;
+#endif
+
+#ifdef CONFIG_GOODIX_TRUSTED_TOUCH
+	struct trusted_touch_vm_info *vm_info;
+	struct mutex fts_clk_io_ctrl_mutex;
+	struct completion trusted_touch_powerdown;
+	struct clk *core_clk;
+	struct clk *iface_clk;
+	atomic_t trusted_touch_initialized;
+	atomic_t trusted_touch_enabled;
+	atomic_t trusted_touch_transition;
+	atomic_t trusted_touch_event;
+	atomic_t trusted_touch_abort_status;
+	atomic_t delayed_vm_probe_pending;
+	atomic_t trusted_touch_mode;
 #endif
 };
 
