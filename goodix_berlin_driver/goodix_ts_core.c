@@ -2300,6 +2300,10 @@ static int goodix_ts_probe(struct platform_device *pdev)
 			ts_err("failed parse device info form dts, %d", ret);
 			return -EINVAL;
 		}
+#if defined(CONFIG_DRM)
+		of_property_read_string(node, "qcom,touch-environment",
+				&core_data->touch_environment);
+#endif
 	} else {
 		ts_err("no valid device tree node found");
 		return -ENODEV;
