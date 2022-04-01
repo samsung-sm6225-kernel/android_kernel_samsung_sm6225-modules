@@ -274,6 +274,16 @@ static test_case_info_t test_case_1[] = {
 	{"", MMRM_TEST_VDD_LEVEL_MAX}
 };
 
+static test_case_info_t neo_test_case_1[] = {
+	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_lite_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_lite_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"", MMRM_TEST_VDD_LEVEL_MAX}
+};
+
 // display mdss_mdp/dptx0 at nom
 //
 //
@@ -324,6 +334,33 @@ static test_case_info_t test_case_4[] = {
 	{"", MMRM_TEST_VDD_LEVEL_MAX}
 };
 
+static test_case_info_t neo_test_case_4[] = {
+	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_lite_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_lite_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_jpeg_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_camnoc_axi_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_icp_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_cphy_rx_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_csi0phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi1phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi2phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi3phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_cci_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_cci_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_slow_ahb_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_fast_ahb_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"video_cc_mvs1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"", MMRM_TEST_VDD_LEVEL_MAX}
+};
+
 
 // all camera +cvp + mdss_mdp at nom
 //
@@ -347,6 +384,35 @@ static test_case_info_t test_case_5[] = {
 	{"cam_cc_csi3phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_csi4phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_csi5phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_cci_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_cci_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_slow_ahb_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_fast_ahb_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"video_cc_mvs1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"disp_cc_mdss_mdp_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"", MMRM_TEST_VDD_LEVEL_MAX}
+};
+
+static test_case_info_t neo_test_case_5[] = {
+	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_lite_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_lite_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_jpeg_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_camnoc_axi_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_icp_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_cphy_rx_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_csi0phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi1phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi2phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi3phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 
 	{"cam_cc_cci_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_cci_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
@@ -383,6 +449,36 @@ static test_case_info_t test_case_6[] = {
 	{"cam_cc_csi3phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_csi4phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_csi5phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_cci_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_cci_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_slow_ahb_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_fast_ahb_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"video_cc_mvs1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"disp_cc_mdss_mdp_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"video_cc_mvs0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"", MMRM_TEST_VDD_LEVEL_MAX}
+};
+
+static test_case_info_t neo_test_case_6[] = {
+	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_lite_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_lite_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_jpeg_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_camnoc_axi_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_icp_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_cphy_rx_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_csi0phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi1phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi2phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi3phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 
 	{"cam_cc_cci_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_cci_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
@@ -438,10 +534,7 @@ static test_case_info_t test_case_7[] = {
 static test_case_info_t neo_test_case_7[] = {
 	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
-	{"cam_cc_ife_2_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_ife_lite_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
-	{"cam_cc_sfe_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
-	{"cam_cc_sfe_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_ife_lite_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
@@ -455,8 +548,6 @@ static test_case_info_t neo_test_case_7[] = {
 	{"cam_cc_csi1phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_csi2phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_csi3phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
-	{"cam_cc_csi4phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
-	{"cam_cc_csi5phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 
 	{"cam_cc_cci_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_cci_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
@@ -619,7 +710,6 @@ static test_case_info_t test_case_15[] = {
 static test_case_info_t neo_test_case_15[] = {
 	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_SVS},
 	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_SVS},
-	{"cam_cc_ife_2_clk_src", MMRM_TEST_VDD_LEVEL_SVS},
 	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 
@@ -651,9 +741,6 @@ static test_case_info_t test_case_16[] = {
 static test_case_info_t neo_test_case_16[] = {
 	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_SVS},
 	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_SVS},
-	{"cam_cc_ife_2_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
-	{"cam_cc_sfe_0_clk_src", MMRM_TEST_VDD_LEVEL_SVS},
-	{"cam_cc_sfe_1_clk_src", MMRM_TEST_VDD_LEVEL_SVS},
 	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 
@@ -741,6 +828,24 @@ static test_case_info_t test_case_19[] = {
 	{"", MMRM_TEST_VDD_LEVEL_MAX}
 };
 
+static test_case_info_t neo_test_case_19[] = {
+	{"video_cc_mvs0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"video_cc_mvs1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"disp_cc_mdss_mdp_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_camnoc_axi_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi0phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi1phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"", MMRM_TEST_VDD_LEVEL_MAX}
+};
+
 // throttle video
 // vid(nom) + eva (nom) +mdp (nom) + bps(nom) + ipe(nom) +sfe0(nom) + sfe1(nom) +camnoc(nom) + ife0(nom) + csid0(nom)+ ife1(nom) + csid1(nom) + ife2(svs)
 //
@@ -762,6 +867,24 @@ static test_case_info_t test_case_20[] = {
 	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_csi1phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_ife_2_clk_src", MMRM_TEST_VDD_LEVEL_SVS},
+
+	{"", MMRM_TEST_VDD_LEVEL_MAX}
+};
+
+static test_case_info_t neo_test_case_20[] = {
+	{"video_cc_mvs0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"video_cc_mvs1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"disp_cc_mdss_mdp_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_camnoc_axi_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi0phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi1phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 
 	{"", MMRM_TEST_VDD_LEVEL_MAX}
 };
@@ -806,8 +929,6 @@ static test_case_info_t neo_test_case_21[] = {
 	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 
-	{"cam_cc_sfe_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
-	{"cam_cc_sfe_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_camnoc_axi_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 
 	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
@@ -827,6 +948,22 @@ static test_case_info_t test_case_22[] = {
 	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
 	{"cam_cc_sfe_0_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
 	{"cam_cc_sfe_1_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
+
+	{"cam_cc_camnoc_axi_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
+	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
+	{"cam_cc_csi0phytimer_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
+	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
+	{"cam_cc_csi1phytimer_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
+	{"cam_cc_csi3phytimer_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
+
+	{"", MMRM_TEST_VDD_LEVEL_MAX}
+};
+
+static test_case_info_t neo_test_case_22[] = {
+	{"video_cc_mvs1_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
+	{"disp_cc_mdss_mdp_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
+	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
+	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
 
 	{"cam_cc_camnoc_axi_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
 	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS},
@@ -863,6 +1000,35 @@ static test_case_info_t test_case_9[] = {
 	{"cam_cc_csi3phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_csi4phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_csi5phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_cci_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_cci_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_slow_ahb_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_fast_ahb_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"video_cc_mvs1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"", MMRM_TEST_VDD_LEVEL_MAX}
+};
+
+static test_case_info_t neo_test_case_9[] = {
+	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_lite_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ife_lite_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM, 0, 2},
+
+	{"cam_cc_jpeg_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_camnoc_axi_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_icp_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_cphy_rx_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+
+	{"cam_cc_csi0phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi1phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi2phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
+	{"cam_cc_csi3phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 
 	{"cam_cc_cci_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_cci_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
@@ -917,15 +1083,12 @@ static test_case_info_t test_case_10[] = {
 static test_case_info_t neo_test_case_10[] = {
 	{"cam_cc_ife_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_ife_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
-	{"cam_cc_ife_2_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_ife_lite_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
-	{"cam_cc_sfe_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
-	{"cam_cc_sfe_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_ife_lite_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_ipe_nps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_bps_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 
-	{"cam_cc_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM, 0, 3},
+	{"cam_cc_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM, 0, 2},
 
 	{"cam_cc_jpeg_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_camnoc_axi_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
@@ -936,8 +1099,6 @@ static test_case_info_t neo_test_case_10[] = {
 	{"cam_cc_csi1phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_csi2phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_csi3phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
-	{"cam_cc_csi4phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
-	{"cam_cc_csi5phytimer_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 
 	{"cam_cc_cci_0_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
 	{"cam_cc_cci_1_clk_src", MMRM_TEST_VDD_LEVEL_NOM},
@@ -973,15 +1134,15 @@ test_case_info_t  *waipio_testcases[] = {
 };
 
 test_case_info_t  *neo_testcases[] = {
-	test_case_1,
+	neo_test_case_1,
 	test_case_2,
 	test_case_3,
-	test_case_4,
-	test_case_5,
-	test_case_6,
+	neo_test_case_4,
+	neo_test_case_5,
+	neo_test_case_6,
 	neo_test_case_7,
 	neo_test_case_8,
-	test_case_9,
+	neo_test_case_9,
 	neo_test_case_10,
 	neo_test_case_11,
 	neo_test_case_12,
@@ -991,10 +1152,10 @@ test_case_info_t  *neo_testcases[] = {
 	neo_test_case_16,
 	neo_test_case_17,
 	neo_test_case_18,
-	test_case_19,
-	test_case_20,
+	neo_test_case_19,
+	neo_test_case_20,
 	neo_test_case_21,
-	test_case_22,
+	neo_test_case_22,
 };
 
 int waipio_testcases_count = sizeof(waipio_testcases)/sizeof(waipio_testcases[0]);
@@ -1021,10 +1182,10 @@ static test_case_info_t waipio_cornercases_2 [] = {
 };
 
 static test_case_info_t neo_cornercases_2 [] = {
-	{"cam_cc_csid_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS, 1, 3},
 	{"cam_cc_csid_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS, 1, 2},
+	{"cam_cc_csid_clk_src", MMRM_TEST_VDD_LEVEL_LOW_SVS, 1, 1},
 	{"cam_cc_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM, 1, 2},
-	{"cam_cc_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM, 1, 3},
+	{"cam_cc_csid_clk_src", MMRM_TEST_VDD_LEVEL_NOM, 1, 1},
 	{"", MMRM_TEST_VDD_LEVEL_MAX}
 };
 
@@ -1034,7 +1195,6 @@ test_case_info_t *waipio_cornercase_testcases [] = {
 };
 
 test_case_info_t *neo_cornercase_testcases [] = {
-	cornercases_1,
 	neo_cornercases_2,
 };
 
