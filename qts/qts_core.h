@@ -159,6 +159,7 @@ struct qts_data {
 struct qts_data_entries;
 
 struct qts_data_entries {
+	struct kset *qts_kset;
 	struct qts_data info[QTS_CLIENT_MAX];
 	struct mutex qts_data_entries_lock;
 };

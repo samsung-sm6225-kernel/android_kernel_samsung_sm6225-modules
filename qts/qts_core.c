@@ -1249,14 +1249,10 @@ static void qts_trusted_touch_init(struct qts_data *qts_data)
 	atomic_set(&qts_data->trusted_touch_initialized, 1);
 }
 
-static ssize_t trusted_touch_enable_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
+static ssize_t trusted_touch_enable_show(struct kobject *kobj, struct kobj_attribute *attr,
+				char *buf)
 {
-	struct i2c_client *client = to_i2c_client(dev);
 	struct qts_data *qts_data;
-
-	if (!client)
-		return scnprintf(buf, PAGE_SIZE, "client is null\n");
 
 	qts_data = &qts_data_entries->info[QTS_CLIENT_PRIMARY_TOUCH];
 
@@ -1264,16 +1260,12 @@ static ssize_t trusted_touch_enable_show(struct device *dev,
 			atomic_read(&qts_data->trusted_touch_enabled));
 }
 
-static ssize_t trusted_touch_enable_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t trusted_touch_enable_store(struct kobject *kobj, struct kobj_attribute *attr,
+				const char *buf, size_t count)
 {
-	struct i2c_client *client = to_i2c_client(dev);
 	struct qts_data *qts_data;
 	unsigned long value;
 	int err = 0;
-
-	if (!client)
-		return -EIO;
 
 	if (count > 2)
 		return -EINVAL;
@@ -1304,14 +1296,10 @@ static ssize_t trusted_touch_enable_store(struct device *dev,
 	return err;
 }
 
-static ssize_t trusted_touch_event_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
+static ssize_t trusted_touch_event_show(struct kobject *kobj, struct kobj_attribute *attr,
+				char *buf)
 {
-	struct i2c_client *client = to_i2c_client(dev);
 	struct qts_data *qts_data;
-
-	if (!client)
-		return scnprintf(buf, PAGE_SIZE, "client is null\n");
 
 	qts_data = &qts_data_entries->info[QTS_CLIENT_PRIMARY_TOUCH];
 
@@ -1319,16 +1307,12 @@ static ssize_t trusted_touch_event_show(struct device *dev,
 			atomic_read(&qts_data->trusted_touch_event));
 }
 
-static ssize_t trusted_touch_event_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t trusted_touch_event_store(struct kobject *kobj, struct kobj_attribute *attr,
+				const char *buf, size_t count)
 {
-	struct i2c_client *client = to_i2c_client(dev);
 	struct qts_data *qts_data;
 	unsigned long value;
 	int err = 0;
-
-	if (!client)
-		return -EIO;
 
 	if (count > 2)
 		return -EINVAL;
@@ -1350,22 +1334,27 @@ static ssize_t trusted_touch_event_store(struct device *dev,
 	return count;
 }
 
-static ssize_t trusted_touch_type_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
+static ssize_t trusted_touch_type_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
 	struct qts_data *qts_data = &qts_data_entries->info[QTS_CLIENT_PRIMARY_TOUCH];
 
 	return scnprintf(buf, PAGE_SIZE, "%s", qts_data->vm_info->trusted_touch_type);
 }
 
-static DEVICE_ATTR_RW(trusted_touch_enable);
-static DEVICE_ATTR_RW(trusted_touch_event);
-static DEVICE_ATTR_RO(trusted_touch_type);
+
+static struct kobj_attribute trusted_touch_enable_attr =
+	__ATTR(trusted_touch_enable, 0664, trusted_touch_enable_show, trusted_touch_enable_store);
+
+static struct kobj_attribute trusted_touch_event_attr =
+	__ATTR(trusted_touch_event, 0664, trusted_touch_event_show, trusted_touch_event_store);
+
+static struct kobj_attribute trusted_touch_type_attr =
+	__ATTR(trusted_touch_type, 0664, trusted_touch_type_show, NULL);
 
 static struct attribute *qts_attributes[] = {
-	&dev_attr_trusted_touch_enable.attr,
-	&dev_attr_trusted_touch_event.attr,
-	&dev_attr_trusted_touch_type.attr,
+	&trusted_touch_enable_attr.attr,
+	&trusted_touch_event_attr.attr,
+	&trusted_touch_type_attr.attr,
 	NULL,
 };
 
@@ -1376,12 +1365,37 @@ static struct attribute_group qts_attribute_group = {
 static int qts_create_sysfs(struct qts_data *qts_data)
 {
 	int ret = 0;
+	struct kobject *qts_kobj;
+	struct kobject *client_kobj;
+
+	qts_kobj = &qts_data_entries->qts_kset->kobj;
 
 	if (qts_data->client_type == QTS_CLIENT_PRIMARY_TOUCH) {
-		ret = sysfs_create_group(&qts_data->client->dev.kobj, &qts_attribute_group);
+
+		client_kobj = kobject_create_and_add("primary", qts_kobj);
+		if (!client_kobj) {
+			pr_err("primary kobject_create_and_add failed\n");
+			return -ENOMEM;
+		}
+
+		ret = sysfs_create_group(client_kobj, &qts_attribute_group);
 		if (ret) {
-			pr_err("%s sysfs_create_group() failed\n", __func__);
-			sysfs_remove_group(&qts_data->client->dev.kobj, &qts_attribute_group);
+			pr_err("[EX]: sysfs_create_group() failed!!\n");
+			sysfs_remove_group(client_kobj, &qts_attribute_group);
+			return -ENOMEM;
+		}
+	} else if (qts_data->client_type == QTS_CLIENT_SECONDARY_TOUCH) {
+
+		client_kobj = kobject_create_and_add("secondary", qts_kobj);
+		if (!client_kobj) {
+			pr_err("secondary kobject_create_and_add failed\n");
+			return -ENOMEM;
+		}
+
+		ret = sysfs_create_group(client_kobj, &qts_attribute_group);
+		if (ret) {
+			pr_err("[EX]: sysfs_create_group() failed!!\n");
+			sysfs_remove_group(client_kobj, &qts_attribute_group);
 			return -ENOMEM;
 		}
 	}
@@ -1658,6 +1672,13 @@ int qts_client_register(struct qts_vendor_data qts_vendor_data)
 	qts_data->schedule_resume = qts_vendor_data.schedule_resume;
 
 	qts_trusted_touch_init(qts_data);
+
+	qts_data_entries->qts_kset = kset_create_and_add("qts", NULL, kernel_kobj);
+	if (!qts_data_entries->qts_kset) {
+		pr_err("qts kset create failed\n");
+		return -ENOMEM;
+	}
+
 	mutex_init(&(qts_data->qts_clk_io_ctrl_mutex));
 	if (qts_data->tui_supported)
 		qts_create_sysfs(qts_data);
