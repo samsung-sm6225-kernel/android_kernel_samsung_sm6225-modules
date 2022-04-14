@@ -664,31 +664,34 @@ void msm_audio_ion_crash_handler(void)
 	struct msm_audio_ion_private *ion_data = NULL;
 
 	pr_debug("Inside %s\n", __func__);
+
+	if (!msm_audio_ion_fd_list_init) {
+		pr_err("%s: list not initialized yet, hence returning .... ", __func__);
+		return;
+	}
 	mutex_lock(&(msm_audio_ion_fd_list.list_mutex));
 	list_for_each_entry(msm_audio_fd_data,
 		&msm_audio_ion_fd_list.fd_list, list) {
-		handle = msm_audio_fd_data->handle;
-		ion_data = dev_get_drvdata(msm_audio_fd_data->dev);
-		/*  clean if CMA was used*/
-		/*
-		 * TODO: assigned memory to adsp, mdsp & sdsp cannot be reclaimed,
-		 * caused  by a known issue from TZ.
-		 * After TZ fixes the issue, the memory can have the common handling
-		 */
-		if (msm_audio_fd_data->hyp_assign) {
-			if (msm_audio_fd_data->ss_masks == (0x1|0x2|0x8)) {
-				continue;
-			}
-			msm_audio_hyp_unassign(msm_audio_fd_data);
+		if (msm_audio_fd_data) {
+			handle = msm_audio_fd_data->handle;
+			ion_data = dev_get_drvdata(msm_audio_fd_data->dev);
+			/*  clean if CMA was used*/
+			if (msm_audio_fd_data->hyp_assign)
+				msm_audio_hyp_unassign(msm_audio_fd_data);
+			if (handle)
+				msm_audio_ion_free(handle, ion_data);
 		}
-		msm_audio_ion_free(handle, ion_data);
 	}
 	list_for_each_safe(ptr, next,
 		&msm_audio_ion_fd_list.fd_list) {
-		msm_audio_fd_data = list_entry(ptr, struct msm_audio_fd_data,
-						list);
-		list_del(&(msm_audio_fd_data->list));
-		kfree(msm_audio_fd_data);
+		if (ptr) {
+			msm_audio_fd_data = list_entry(ptr, struct msm_audio_fd_data,
+							list);
+			if (msm_audio_fd_data) {
+				list_del(&(msm_audio_fd_data->list));
+				kfree(msm_audio_fd_data);
+			}
+		}
 	}
 	mutex_unlock(&(msm_audio_ion_fd_list.list_mutex));
 }
