@@ -2571,7 +2571,6 @@ skip_to_power_gpio_setup:
 
 err_out:
 	devm_kfree(&pdev->dev, core_data);
-	core_data->init_stage = CORE_INIT_FAIL;
 	core_module_prob_sate = CORE_MODULE_PROB_FAILED;
 	ts_err("goodix_ts_core failed, ret:%d", ret);
 	return ret;
