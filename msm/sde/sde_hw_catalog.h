@@ -53,6 +53,7 @@
 #define SDE_HW_VER_820	SDE_HW_VER(8, 2, 0) /* diwali */
 #define SDE_HW_VER_850	SDE_HW_VER(8, 5, 0) /* cape */
 #define SDE_HW_VER_900	SDE_HW_VER(9, 0, 0) /* kalama */
+#define SDE_HW_VER_6100 SDE_HW_VER(6, 10, 0) /* khaje */
 
 /* Avoid using below IS_XXX macros outside catalog, use feature bit instead */
 #define IS_SDE_MAJOR_SAME(rev1, rev2)   \
@@ -82,6 +83,7 @@
 #define IS_DIWALI_TARGET(rev) IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_VER_820)
 #define IS_CAPE_TARGET(rev) IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_VER_850)
 #define IS_KALAMA_TARGET(rev) IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_VER_900)
+#define IS_KHAJE_TARGET(rev) IS_SDE_MAJOR_MINOR_SAME((rev), SDE_HW_VER_6100)
 
 #define SDE_HW_BLK_NAME_LEN	16
 
