@@ -1252,21 +1252,16 @@ static struct syna_tcm_module_cb touch_module = {
 	.early_suspend = touch_early_suspend,
 };
 
-static int __init touch_module_init(void)
+ int touch_module_init(void)
 {
 	return syna_tcm_add_module(&touch_module, true);
 }
-
-static void __exit touch_module_exit(void)
+EXPORT_SYMBOL(touch_module_init);
+ void touch_module_exit(void)
 {
 	syna_tcm_add_module(&touch_module, false);
 
 	wait_for_completion(&touch_remove_complete);
 }
+EXPORT_SYMBOL(touch_module_exit);
 
-module_init(touch_module_init);
-module_exit(touch_module_exit);
-
-MODULE_AUTHOR("Synaptics, Inc.");
-MODULE_DESCRIPTION("Synaptics TCM Touch Module");
-MODULE_LICENSE("GPL v2");

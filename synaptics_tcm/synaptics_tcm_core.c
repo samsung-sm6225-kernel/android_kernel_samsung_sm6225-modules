@@ -207,6 +207,9 @@ static struct device_attribute *dynamic_config_attrs[] = {
 	ATTRIFY(enable_glove),
 };
 
+extern int touch_module_init(void);
+extern void touch_module_exit(void);
+
 static ssize_t syna_tcm_sysfs_info_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -3044,7 +3047,7 @@ static int syna_tcm_suspend(struct device *dev)
 
 
 #ifdef CONFIG_DRM
-
+#if 0
 static int syna_tcm_early_suspend(struct device *dev)
 {
 #ifndef WAKEUP_GESTURE
@@ -3101,21 +3104,51 @@ static int syna_tcm_early_suspend(struct device *dev)
 
 	return 0;
 }
+#endif
 
-static int syna_tcm_fb_notifier_cb(struct notifier_block *nb,
-		unsigned long action, void *data)
+static void syna_tcm_fb_notifier_cb(enum panel_event_notifier_tag tag,
+                                struct panel_event_notification *notification,
+                                        void *pvt_data)
 {
 	int retval = 0;
-	int transition;
-	struct drm_panel_notifier *evdata = data;
-	struct syna_tcm_hcd *tcm_hcd =
-			container_of(nb, struct syna_tcm_hcd, fb_notifier);
+	struct syna_tcm_hcd *tcm_hcd = (struct syna_tcm_hcd *) pvt_data;
 
-	if (!evdata)
-		return 0;
+	 if (!notification) {
+                pr_err("Invalid notification\n");
+                return;
+        }
 
-	transition = *(int *)evdata->data;
-
+        pr_debug("Notification type:%d, early_trigger:%d",
+                        notification->notif_type,
+                        notification->notif_data.early_trigger);
+        switch (notification->notif_type) {
+        case DRM_PANEL_EVENT_UNBLANK:
+                if (notification->notif_data.early_trigger)
+                        pr_debug("resume notification pre commit\n");
+                else
+                  retval = syna_tcm_resume(&tcm_hcd->pdev->dev);
+                break;
+        case DRM_PANEL_EVENT_BLANK:
+                if (notification->notif_data.early_trigger) {
+                  retval = syna_tcm_suspend(&tcm_hcd->pdev->dev);
+                } else {
+                        pr_debug("suspend notification post commit\n");
+                }
+                break;
+        case DRM_PANEL_EVENT_BLANK_LP:
+                pr_debug("received lp event\n");
+                break;
+        case DRM_PANEL_EVENT_FPS_CHANGE:
+                pr_debug("Received fps change old fps:%d new fps:%d\n",
+                                notification->notif_data.old_fps,
+                                notification->notif_data.new_fps);
+                break;
+        default:
+                pr_debug("notification not serviced :%d\n",
+                                notification->notif_type);
+		break;
+	}
+#if 0
 	if (atomic_read(&tcm_hcd->firmware_flashing)
 		&& transition == DRM_PANEL_BLANK_POWERDOWN) {
 		retval = wait_event_interruptible_timeout(tcm_hcd->reflash_wq,
@@ -3149,9 +3182,8 @@ static int syna_tcm_fb_notifier_cb(struct notifier_block *nb,
 		tcm_hcd->fb_ready++;
 #endif
 	}
+#endif
 
-
-	return 0;
 }
 
 #elif CONFIG_FB
@@ -3313,6 +3345,7 @@ static int syna_tcm_probe(struct platform_device *pdev)
 	const struct syna_tcm_board_data *bdata;
 	const struct syna_tcm_hw_interface *hw_if;
 	struct drm_panel *active_panel = tcm_get_panel();
+	void *cookie;
 
 	hw_if = pdev->dev.platform_data;
 	if (!hw_if) {
@@ -3488,16 +3521,17 @@ static int syna_tcm_probe(struct platform_device *pdev)
 	}
 
 #ifdef CONFIG_DRM
-	tcm_hcd->fb_notifier.notifier_call = syna_tcm_fb_notifier_cb;
 	if (active_panel) {
-		retval = drm_panel_notifier_register(active_panel,
-				&tcm_hcd->fb_notifier);
-		if (retval < 0) {
+                cookie = panel_event_notifier_register(PANEL_EVENT_NOTIFICATION_PRIMARY,
+                        PANEL_EVENT_NOTIFIER_CLIENT_PRIMARY_TOUCH, active_panel,
+                        &syna_tcm_fb_notifier_cb, tcm_hcd);
+		if (!cookie) {
 			dev_err(&pdev->dev,
 					"%s: Failed to register fb notifier client\n",
 					__func__);
 			goto err_drm_reg;
 		}
+		tcm_hcd->notifier_cookie = cookie;
 	}
 
 #elif CONFIG_FB
@@ -3536,15 +3570,14 @@ static int syna_tcm_probe(struct platform_device *pdev)
 	mod_pool.tcm_hcd = tcm_hcd;
 	mod_pool.queue_work = true;
 	mod_pool.reconstructing = false;
-
+	touch_module_init();
 	return 0;
 
 
 err_create_run_kthread:
 #ifdef CONFIG_DRM
 	if (active_panel)
-		drm_panel_notifier_unregister(active_panel,
-				&tcm_hcd->fb_notifier);
+		panel_event_notifier_unregister(tcm_hcd->notifier_cookie);
 #elif CONFIG_FB
 	fb_unregister_client(&tcm_hcd->fb_notifier);
 #endif
@@ -3647,6 +3680,7 @@ static int syna_tcm_remove(struct platform_device *pdev)
 	const struct syna_tcm_board_data *bdata = tcm_hcd->hw_if->bdata;
 	struct drm_panel *active_panel = tcm_get_panel();
 
+	touch_module_exit();
 	mutex_lock(&mod_pool.mutex);
 
 	if (!list_empty(&mod_pool.list)) {
@@ -3687,8 +3721,7 @@ static int syna_tcm_remove(struct platform_device *pdev)
 
 #ifdef CONFIG_DRM
 	if (active_panel)
-		drm_panel_notifier_unregister(active_panel,
-				&tcm_hcd->fb_notifier);
+		panel_event_notifier_unregister(tcm_hcd->notifier_cookie);
 #elif CONFIG_FB
 	fb_unregister_client(&tcm_hcd->fb_notifier);
 #endif

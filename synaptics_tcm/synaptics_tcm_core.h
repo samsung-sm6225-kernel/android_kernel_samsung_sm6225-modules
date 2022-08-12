@@ -40,9 +40,10 @@
 #include <linux/delay.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
-#include <linux/input/synaptics_tcm.h>
+#include "synaptics_tcm.h"
 #ifdef CONFIG_DRM
 #include <drm/drm_panel.h>
+#include <linux/soc/qcom/panel_event_notifier.h>
 #elif CONFIG_FB
 #include <linux/fb.h>
 #include <linux/notifier.h>
@@ -434,6 +435,7 @@ struct syna_tcm_hcd {
 #if defined(CONFIG_DRM) || defined(CONFIG_FB)
 	struct notifier_block fb_notifier;
 #endif
+	void   *notifier_cookie;
 	struct syna_tcm_buffer in;
 	struct syna_tcm_buffer out;
 	struct syna_tcm_buffer resp;
