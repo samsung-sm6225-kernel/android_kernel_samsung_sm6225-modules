@@ -798,7 +798,12 @@ static int wsa_dev_mode_put(struct snd_kcontrol *kcontrol,
 	int dev_mode;
 	int wsa_dev_index;
 
-	dev_mode = ucontrol->value.integer.value[0];
+	if ((ucontrol->value.integer.value[0] >= SPEAKER) &&
+			(ucontrol->value.integer.value[0] < MAX_DEV_MODE))
+		dev_mode = ucontrol->value.integer.value[0];
+	else
+		return -EINVAL;
+
 	dev_dbg(component->dev, "%s: Dev Mode current: %d, new: %d\n",
 		__func__, wsa884x->dev_mode, dev_mode);
 
@@ -1805,6 +1810,9 @@ static int wsa884x_event_notify(struct notifier_block *nb,
 		/* Add delay to allow enumerate */
 		usleep_range(20000, 20010);
 		wsa884x_swr_reset(wsa884x);
+		dev_err(wsa884x->dev, "%s: BOLERO_SLV_EVT_SSR_UP Called", __func__);
+		swr_init_port_params(wsa884x->swr_slave, WSA884X_MAX_SWR_PORTS,
+			wsa884x->swr_wsa_port_params);
 		break;
 
 	case BOLERO_SLV_EVT_PA_ON_POST_FSCLK:
@@ -2163,7 +2171,7 @@ static int wsa884x_swr_probe(struct swr_device *pdev)
 			ret = of_property_read_u32_index(
 				wsa884x->macro_dev->dev.of_node,
 				"qcom,wsa-bat-cfgs",
-				dev_index - 1,
+				wsa_dev_index,
 				&wsa884x->bat_cfg);
 			if (ret) {
 				dev_err(&pdev->dev,
@@ -2393,7 +2401,9 @@ static int wsa884x_swr_suspend(struct device *dev)
 		return -EINVAL;
 	}
 	dev_dbg(dev, "%s: system suspend\n", __func__);
-	if (wsa884x->dapm_bias_off) {
+	if (wsa884x->dapm_bias_off ||
+		(snd_soc_component_get_bias_level(wsa884x->component) ==
+		 SND_SOC_BIAS_OFF)) {
 		msm_cdc_set_supplies_lpm_mode(dev, wsa884x->supplies,
 					wsa884x->regulator,
 					wsa884x->num_supplies,
