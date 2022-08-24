@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CNSS_PCI_H
@@ -25,6 +25,7 @@
 #define PCI_LINK_DOWN			0
 #define LINK_TRAINING_RETRY_MAX_TIMES		3
 #define LINK_TRAINING_RETRY_DELAY_MS		500
+#define MSI_USERS			4
 
 enum cnss_mhi_state {
 	CNSS_MHI_INIT,
@@ -56,6 +57,7 @@ enum cnss_pci_reg_dev_mask {
 	REG_MASK_QCA6390,
 	REG_MASK_QCA6490,
 	REG_MASK_KIWI,
+	REG_MASK_MANGO,
 };
 
 struct cnss_msi_user {
@@ -94,6 +96,11 @@ struct cnss_pm_stats {
 	atomic_t runtime_put_id[RTPM_ID_MAX];
 	u64 runtime_get_timestamp_id[RTPM_ID_MAX];
 	u64 runtime_put_timestamp_id[RTPM_ID_MAX];
+};
+
+struct cnss_print_optimize {
+	int msi_log_chk[MSI_USERS];
+	int msi_addr_chk;
 };
 
 struct cnss_pci_data {
@@ -210,6 +217,8 @@ static inline int cnss_pci_get_drv_connected(void *bus_priv)
 	return atomic_read(&pci_priv->drv_connected);
 }
 
+void cnss_mhi_controller_set_base(struct cnss_pci_data *pci_priv,
+				  phys_addr_t base);
 int cnss_pci_check_link_status(struct cnss_pci_data *pci_priv);
 int cnss_suspend_pci_link(struct cnss_pci_data *pci_priv);
 int cnss_resume_pci_link(struct cnss_pci_data *pci_priv);
@@ -272,4 +281,6 @@ int cnss_pci_get_iova_ipa(struct cnss_pci_data *pci_priv, u64 *addr,
 			  u64 *size);
 void cnss_pci_handle_linkdown(struct cnss_pci_data *pci_priv);
 
+int cnss_pci_update_time_sync_period(struct cnss_pci_data *pci_priv,
+				     unsigned int time_sync_period);
 #endif /* _CNSS_PCI_H */

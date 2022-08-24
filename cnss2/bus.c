@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include "bus.h"
@@ -30,6 +30,7 @@ enum cnss_dev_bus_type cnss_get_bus_type(unsigned long device_id)
 	case QCA6390_DEVICE_ID:
 	case QCA6490_DEVICE_ID:
 	case KIWI_DEVICE_ID:
+	case MANGO_DEVICE_ID:
 		return CNSS_BUS_PCI;
 	default:
 		cnss_pr_err("Unknown device_id: 0x%lx\n", device_id);
@@ -580,3 +581,56 @@ int cnss_bus_get_iova_ipa(struct cnss_plat_data *plat_priv, u64 *addr,
 		return -EINVAL;
 	}
 }
+
+int cnss_bus_update_time_sync_period(struct cnss_plat_data *plat_priv,
+				     unsigned int time_sync_period)
+{
+	if (!plat_priv)
+		return -ENODEV;
+
+	switch (plat_priv->bus_type) {
+	case CNSS_BUS_PCI:
+		return cnss_pci_update_time_sync_period(plat_priv->bus_priv,
+							time_sync_period);
+	default:
+		cnss_pr_err("Unsupported bus type: %d\n",
+			    plat_priv->bus_type);
+		return -EINVAL;
+	}
+}
+
+#if IS_ENABLED(CONFIG_MHI_BUS_MISC)
+void cnss_bus_disable_mhi_satellite_cfg(struct cnss_plat_data *plat_priv)
+{
+	struct cnss_pci_data *pci_priv;
+
+	pci_priv = plat_priv->bus_priv;
+	if (!pci_priv) {
+		cnss_pr_err("mhi satellite could not be disabled since pci_priv is NULL\n");
+		return;
+	}
+
+	switch (plat_priv->bus_type) {
+	case CNSS_BUS_PCI:
+		/* MHI satellite configuration is only for KIWI V2 and
+		 * that too only in DRV mode.
+		 */
+		if (plat_priv->device_id == KIWI_DEVICE_ID &&
+		    plat_priv->device_version.major_version == FW_V2_NUMBER) {
+			cnss_pr_dbg("Remove MHI satellite configuration\n");
+			return cnss_mhi_controller_set_base(pci_priv, 0);
+		}
+		break;
+	default:
+		cnss_pr_dbg("Unsupported bus type: %d, ignore disable mhi satellite cfg\n",
+			    plat_priv->bus_type);
+		return;
+	}
+
+	return;
+}
+#else
+void cnss_bus_disable_mhi_satellite_cfg(struct cnss_plat_data *pci_priv)
+{
+}
+#endif

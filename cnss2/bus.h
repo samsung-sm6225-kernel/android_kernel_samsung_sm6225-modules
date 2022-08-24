@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _CNSS_BUS_H
@@ -22,6 +22,8 @@
 #define QCA6490_DEVICE_ID		0x1103
 #define KIWI_VENDOR_ID			0x17CB
 #define KIWI_DEVICE_ID			0x1107
+#define MANGO_VENDOR_ID			0x17CB
+#define MANGO_DEVICE_ID			0x110A
 
 enum cnss_dev_bus_type cnss_get_dev_bus_type(struct device *dev);
 enum cnss_dev_bus_type cnss_get_bus_type(unsigned long device_id);
@@ -68,4 +70,7 @@ int cnss_bus_debug_reg_write(struct cnss_plat_data *plat_priv, u32 offset,
 int cnss_bus_get_iova(struct cnss_plat_data *plat_priv, u64 *addr, u64 *size);
 int cnss_bus_get_iova_ipa(struct cnss_plat_data *plat_priv, u64 *addr,
 			  u64 *size);
+int cnss_bus_update_time_sync_period(struct cnss_plat_data *plat_priv,
+				     unsigned int time_sync_period);
+void cnss_bus_disable_mhi_satellite_cfg(struct cnss_plat_data *plat_priv);
 #endif /* _CNSS_BUS_H */

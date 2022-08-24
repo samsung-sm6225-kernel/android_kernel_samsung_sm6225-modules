@@ -55,7 +55,7 @@
 #define CNSS_RAMDUMP_VERSION		0
 #define MAX_FIRMWARE_NAME_LEN		40
 #define FW_V2_NUMBER                    2
-#define POWER_ON_RETRY_MAX_TIMES        3
+#define POWER_ON_RETRY_MAX_TIMES        4
 #define POWER_ON_RETRY_DELAY_MS         500
 #define WLFW_MAX_HANG_EVENT_DATA_SIZE   384
 
@@ -111,6 +111,7 @@ struct cnss_pinctrl_info {
 	struct pinctrl_state *wlan_en_active;
 	struct pinctrl_state *wlan_en_sleep;
 	int bt_en_gpio;
+	int wlan_en_gpio;
 	int xo_clk_gpio; /*qca6490 only */
 	int sw_ctrl_gpio;
 	int wlan_sw_ctrl_gpio;
@@ -318,6 +319,9 @@ enum cnss_driver_state {
 	CNSS_DAEMON_CONNECTED,
 	CNSS_PCI_PROBE_DONE,
 	CNSS_DRIVER_REGISTER,
+	CNSS_WLAN_HW_DISABLED,
+	CNSS_FS_READY = 25,
+	CNSS_DRIVER_REGISTERED,
 };
 
 struct cnss_recovery_data {
@@ -502,6 +506,7 @@ struct cnss_plat_data {
 	struct completion cal_complete;
 	struct mutex dev_lock; /* mutex for register access through debugfs */
 	struct mutex driver_ops_lock; /* mutex for external driver ops */
+	struct cnss_wlan_driver *driver_ops;
 	u32 device_freq_hz;
 	u32 diag_reg_read_addr;
 	u32 diag_reg_read_mem_type;
@@ -545,9 +550,13 @@ struct cnss_plat_data {
 	bool adsp_pc_enabled;
 	u64 feature_list;
 	u32 is_converged_dt;
+	struct kobject *wifi_kobj;
 	u16 hang_event_data_len;
 	u32 hang_data_addr_offset;
+	/* bitmap to detect FEM combination */
+	u8 hwid_bitmap;
 	enum cnss_driver_mode driver_mode;
+	uint32_t num_shadow_regs_v3;
 };
 
 #if IS_ENABLED(CONFIG_ARCH_QCOM)
@@ -570,6 +579,8 @@ static inline u64 cnss_get_host_timestamp(struct cnss_plat_data *plat_priv)
 }
 #endif
 
+int cnss_wlan_hw_disable_check(struct cnss_plat_data *plat_priv);
+int cnss_wlan_hw_enable(void);
 struct cnss_plat_data *cnss_get_plat_priv(struct platform_device *plat_dev);
 void cnss_pm_stay_awake(struct cnss_plat_data *plat_priv);
 void cnss_pm_relax(struct cnss_plat_data *plat_priv);

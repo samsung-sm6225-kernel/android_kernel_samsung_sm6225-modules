@@ -270,6 +270,7 @@ extern int cnss_get_user_msi_assignment(struct device *dev, char *user_name,
 extern int cnss_get_msi_irq(struct device *dev, unsigned int vector);
 extern void cnss_get_msi_address(struct device *dev, uint32_t *msi_addr_low,
 				 uint32_t *msi_addr_high);
+extern int cnss_wlan_hw_enable(void);
 extern int cnss_wlan_enable(struct device *dev,
 			    struct cnss_wlan_enable_cfg *config,
 			    enum cnss_driver_mode mode,
@@ -289,4 +290,7 @@ extern int cnss_get_mem_segment_info(enum cnss_remote_mem_type type,
 				     struct cnss_mem_segment segment[],
 				     u32 segment_count);
 extern int cnss_get_pci_slot(struct device *dev);
+extern int cnss_pci_get_reg_dump(struct device *dev, uint8_t *buffer,
+				 uint32_t len);
+extern struct kobject *cnss_get_wifi_kobj(struct device *dev);
 #endif /* _NET_CNSS2_H */
