@@ -341,6 +341,7 @@ ssize_t audio_pkt_write(struct file *file, const char __user *buf,
 	struct gpr_hdr *audpkt_hdr = NULL;
 	void *kbuf;
 	int ret;
+	struct audio_gpr_pkt *gpr_pkt = NULL;
 
 	if (!audpkt_dev)  {
 		AUDIO_PKT_ERR("invalid device handle\n");
@@ -370,6 +371,8 @@ ssize_t audio_pkt_write(struct file *file, const char __user *buf,
 	}
 
 	if (audpkt_hdr->opcode == APM_CMD_SHARED_MEM_MAP_REGIONS) {
+		gpr_pkt = (struct audio_gpr_pkt *) audpkt_hdr;
+		gpr_pkt->audpkt_mem_map.mmap_header.property_flag |= 0x2;
 		ret = audpkt_chk_and_update_physical_addr((struct audio_gpr_pkt *) audpkt_hdr);
 		if (ret < 0) {
 			AUDIO_PKT_ERR("Update Physical Address Failed -%d\n", ret);
