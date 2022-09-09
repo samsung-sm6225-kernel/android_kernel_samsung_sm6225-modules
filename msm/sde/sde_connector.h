@@ -531,6 +531,7 @@ struct sde_misr_sign {
  * @expected_panel_mode: expected panel mode by usespace
  * @panel_dead: Flag to indicate if panel has gone bad
  * @esd_status_check: Flag to indicate if ESD thread is scheduled or not
+ * @twm_en: Flag to indicate if TWM mode is enabled or not.
  * @bl_scale_dirty: Flag to indicate PP BL scale value(s) is changed
  * @bl_scale: BL scale value for ABA feature
  * @bl_scale_sv: BL scale value for sunlight visibility feature
@@ -600,6 +601,7 @@ struct sde_connector {
 	u32 esd_status_interval;
 	bool panel_dead;
 	bool esd_status_check;
+	bool twm_en;
 	enum panel_op_mode expected_panel_mode;
 
 	bool bl_scale_dirty;
