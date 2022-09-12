@@ -1269,12 +1269,28 @@ static void qts_trusted_touch_init(struct qts_data *qts_data)
 	atomic_set(&qts_data->trusted_touch_initialized, 1);
 }
 
+static bool qts_ts_is_primary(struct kobject *kobj)
+{
+	char *path = NULL;
+
+	if (!kobj)
+		return true;
+
+	path = kobject_get_path(kobj, GFP_KERNEL);
+
+	if (strstr(path, "primary"))
+		return true;
+	else
+		return false;
+}
+
 static ssize_t trusted_touch_enable_show(struct kobject *kobj, struct kobj_attribute *attr,
 				char *buf)
 {
 	struct qts_data *qts_data;
+	u32 idx = qts_ts_is_primary(kobj) ? 0 : 1;
 
-	qts_data = &qts_data_entries->info[QTS_CLIENT_PRIMARY_TOUCH];
+	qts_data = &qts_data_entries->info[idx];
 
 	return scnprintf(buf, PAGE_SIZE, "%d",
 			atomic_read(&qts_data->trusted_touch_enabled));
@@ -1286,6 +1302,7 @@ static ssize_t trusted_touch_enable_store(struct kobject *kobj, struct kobj_attr
 	struct qts_data *qts_data;
 	unsigned long value;
 	int err = 0;
+	u32 idx = qts_ts_is_primary(kobj) ? 0 : 1;
 
 	if (count > 2)
 		return -EINVAL;
@@ -1294,7 +1311,7 @@ static ssize_t trusted_touch_enable_store(struct kobject *kobj, struct kobj_attr
 	if (err != 0)
 		return err;
 
-	qts_data = &qts_data_entries->info[QTS_CLIENT_PRIMARY_TOUCH];
+	qts_data = &qts_data_entries->info[idx];
 
 	if (!atomic_read(&qts_data->trusted_touch_initialized))
 		return -EIO;
@@ -1320,8 +1337,9 @@ static ssize_t trusted_touch_event_show(struct kobject *kobj, struct kobj_attrib
 				char *buf)
 {
 	struct qts_data *qts_data;
+	u32 idx = qts_ts_is_primary(kobj) ? 0 : 1;
 
-	qts_data = &qts_data_entries->info[QTS_CLIENT_PRIMARY_TOUCH];
+	qts_data = &qts_data_entries->info[idx];
 
 	return scnprintf(buf, PAGE_SIZE, "%d",
 			atomic_read(&qts_data->trusted_touch_event));
@@ -1333,6 +1351,7 @@ static ssize_t trusted_touch_event_store(struct kobject *kobj, struct kobj_attri
 	struct qts_data *qts_data;
 	unsigned long value;
 	int err = 0;
+	u32 idx = qts_ts_is_primary(kobj) ? 0 : 1;
 
 	if (count > 2)
 		return -EINVAL;
@@ -1341,7 +1360,7 @@ static ssize_t trusted_touch_event_store(struct kobject *kobj, struct kobj_attri
 	if (err != 0)
 		return err;
 
-	qts_data = &qts_data_entries->info[QTS_CLIENT_PRIMARY_TOUCH];
+	qts_data = &qts_data_entries->info[idx];
 
 	if (!atomic_read(&qts_data->trusted_touch_initialized))
 		return -EIO;
@@ -1356,7 +1375,10 @@ static ssize_t trusted_touch_event_store(struct kobject *kobj, struct kobj_attri
 
 static ssize_t trusted_touch_type_show(struct kobject *kobj, struct kobj_attribute *attr, char *buf)
 {
-	struct qts_data *qts_data = &qts_data_entries->info[QTS_CLIENT_PRIMARY_TOUCH];
+	struct qts_data *qts_data;
+	u32 idx = qts_ts_is_primary(kobj) ? 0 : 1;
+
+	qts_data = &qts_data_entries->info[idx];
 
 	return scnprintf(buf, PAGE_SIZE, "%s", qts_data->vm_info->trusted_touch_type);
 }
@@ -1364,8 +1386,11 @@ static ssize_t trusted_touch_type_show(struct kobject *kobj, struct kobj_attribu
 static ssize_t trusted_touch_device_path_show(struct kobject *kobj,
 			struct kobj_attribute *attr, char *buf)
 {
-	struct qts_data *qts_data = &qts_data_entries->info[QTS_CLIENT_PRIMARY_TOUCH];
+	struct qts_data *qts_data;
 	char *path = NULL;
+	u32 idx = qts_ts_is_primary(kobj) ? 0 : 1;
+
+	qts_data = &qts_data_entries->info[idx];
 
 	if (qts_data && qts_data->dev)
 		path = kobject_get_path(&qts_data->dev->kobj, GFP_KERNEL);
@@ -1669,9 +1694,13 @@ int qts_client_register(struct qts_vendor_data qts_vendor_data)
 			pr_err("mem allocation failed\n");
 			return -EPROBE_DEFER;
 		}
+		mutex_init(&qts_data_entries->qts_data_entries_lock);
+		qts_data_entries->qts_kset = kset_create_and_add("qts", NULL, kernel_kobj);
+		if (!qts_data_entries->qts_kset) {
+			pr_err("qts kset create failed\n");
+			return -ENOMEM;
+		}
 	}
-
-	mutex_init(&qts_data_entries->qts_data_entries_lock);
 
 	mutex_lock(&qts_data_entries->qts_data_entries_lock);
 
@@ -1707,12 +1736,6 @@ int qts_client_register(struct qts_vendor_data qts_vendor_data)
 	qts_data->schedule_resume = qts_vendor_data.schedule_resume;
 
 	qts_trusted_touch_init(qts_data);
-
-	qts_data_entries->qts_kset = kset_create_and_add("qts", NULL, kernel_kobj);
-	if (!qts_data_entries->qts_kset) {
-		pr_err("qts kset create failed\n");
-		return -ENOMEM;
-	}
 
 	mutex_init(&(qts_data->qts_clk_io_ctrl_mutex));
 	if (qts_data->tui_supported)
