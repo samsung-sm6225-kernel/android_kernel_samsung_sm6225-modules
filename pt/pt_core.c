@@ -32,6 +32,7 @@
 #include <linux/kthread.h>
 #include <linux/suspend.h>
 #include "pt_regs.h"
+#include <linux/soc/qcom/panel_event_notifier.h>
 
 #define PINCTRL_STATE_ACTIVE    "pmx_ts_active"
 #define PINCTRL_STATE_SUSPEND   "pmx_ts_suspend"
@@ -3786,7 +3787,7 @@ static int pt_pip1_read_data_block_(struct pt_core_data *cd,
 		return 0;
 
 	if (read_buf_size >= *actual_read_len &&
-	    *actual_read_len < PT_MAX_PIP2_MSG_SIZE)
+		*actual_read_len < PT_MAX_PIP2_MSG_SIZE)
 		memcpy(read_buf, &cd->response_buf[10], *actual_read_len);
 	else
 		return -EPROTO;
@@ -10782,7 +10783,7 @@ static int pt_core_suspend(struct device *dev)
 	cd->wait_until_wake = 0;
 	mutex_unlock(&cd->system_lock);
 
-	if (mem_sleep_current == PM_SUSPEND_MEM) {
+	if (pm_suspend_via_firmware()) {
 		rc = pt_core_suspend_(cd->dev);
 		cd->quick_boot = true;
 	} else {
@@ -10978,7 +10979,7 @@ static int pt_core_resume(struct device *dev)
 		return 0;
 
 
-	if (mem_sleep_current == PM_SUSPEND_MEM) {
+	if (pm_suspend_via_firmware()) {
 		rc = pt_core_restore(cd->dev);
 	} else {
 		pt_debug(cd->dev, DL_INFO, "%s start\n", __func__);
@@ -11550,9 +11551,9 @@ int _pt_read_us_file(struct device *dev, u8 *file_path, u8 *buf, int *size)
 	}
 	pt_debug(dev, DL_WARN, "%s: path = %s\n", __func__, file_path);
 
-	oldfs = get_fs();
-	set_fs(KERNEL_DS);
-	filp = filp_open(file_path, O_RDONLY, 0400);
+	oldfs = force_uaccess_begin();
+	filp = filp_open_block(file_path, O_RDONLY, 0400);
+
 	if (IS_ERR(filp)) {
 		pt_debug(dev, DL_ERROR, "%s: Failed to open %s\n", __func__,
 			file_path);
@@ -11593,7 +11594,11 @@ int _pt_read_us_file(struct device *dev, u8 *file_path, u8 *buf, int *size)
 		goto exit;
 	}
 	filp->private_data = inode->i_private;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 0, 0))
+	if (filp->f_op->read(filp, buf, read_len, &(filp->f_pos)) != read_len) {
+#else
 	if (vfs_read(filp, buf, read_len, &(filp->f_pos)) != read_len) {
+#endif
 		pt_debug(dev, DL_ERROR, "%s: file read error.\n", __func__);
 		rc = -EINVAL;
 		goto exit;
@@ -11604,8 +11609,9 @@ exit:
 	if (filp_close(filp, NULL) != 0)
 		pt_debug(dev, DL_ERROR, "%s: file close error.\n", __func__);
 err:
-	set_fs(oldfs);
+	force_uaccess_end(oldfs);
 	return rc;
+
 }
 
 /*******************************************************************************
