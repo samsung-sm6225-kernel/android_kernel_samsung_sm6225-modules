@@ -12805,41 +12805,40 @@ static void pt_suspend_work(struct work_struct *work)
  *   event  - event type of fb notifier
  *  *data   - pointer to fb_event structure
  ******************************************************************************/
-static int drm_notifier_callback(struct notifier_block *self,
-		unsigned long event, void *data)
+static void drm_notifier_callback(enum panel_event_notifier_tag tag,
+		struct panel_event_notification *notification, void *client_data)
 {
-	struct pt_core_data *cd =
-		container_of(self, struct pt_core_data, fb_notifier);
-	struct drm_panel_notifier *evdata = data;
-	int *blank;
+	struct pt_core_data *cd = client_data;
+
+	if(!notification)
+	{
+		pt_debug(cd->dev,DL_INFO, "%s: Invalid notification\n", __func__);
+		return;
+	}
 
 	pt_debug(cd->dev, DL_INFO, "%s: DRM notifier called!\n", __func__);
 
-	if (!evdata)
-		goto exit;
-
-	if (!(event == DRM_PANEL_EARLY_EVENT_BLANK ||
-		event == DRM_PANEL_EVENT_BLANK)) {
-		pt_debug(cd->dev, DL_INFO, "%s: Event(%lu) do not need process\n",
-			__func__, event);
+	if (!(notification->notif_type == DRM_PANEL_EVENT_BLANK ||
+		notification->notif_type == DRM_PANEL_EVENT_BLANK)) {
+		pt_debug(cd->dev, DL_INFO, "%s: Event(%d) do not need process\n",
+			__func__, notification->notif_type);
 		goto exit;
 	}
 
 	if (cd->quick_boot || cd->drv_debug_suspend)
 		goto exit;
 
-	blank = evdata->data;
-	pt_debug(cd->dev, DL_INFO, "%s: DRM event:%lu,blank:%d fb_state %d sleep state %d ",
-		__func__, event, *blank, cd->fb_state, cd->sleep_state);
+	pt_debug(cd->dev, DL_INFO, "%s: DRM event:%d,fb_state %d",
+		__func__, notification->notif_type, cd->fb_state);
 	pt_debug(cd->dev, DL_INFO, "%s: DRM Power - %s - FB state %d ",
-		__func__, (*blank == DRM_PANEL_BLANK_UNBLANK)?"UP":"DOWN", cd->fb_state);
+		__func__, (notification->notif_type == DRM_PANEL_EVENT_UNBLANK)?"UP":"DOWN", cd->fb_state);
 
-	if (*blank == DRM_PANEL_BLANK_UNBLANK) {
+	if (notification->notif_type == DRM_PANEL_EVENT_UNBLANK) {
 		pt_debug(cd->dev, DL_INFO, "%s: UNBLANK!\n", __func__);
-		if (event == DRM_PANEL_EARLY_EVENT_BLANK) {
-			pt_debug(cd->dev, DL_INFO, "%s: resume: event = %lu, not care\n",
-				__func__, event);
-		} else if (event == DRM_PANEL_EVENT_BLANK) {
+		if (notification->notif_type == DRM_PANEL_EVENT_BLANK) {
+			pt_debug(cd->dev, DL_INFO, "%s: resume: event = %d, not care\n",
+				__func__, notification->notif_type);
+		} else if (notification->notif_type == DRM_PANEL_EVENT_BLANK) {
 			if (cd->fb_state != FB_ON) {
 				pt_debug(cd->dev, DL_INFO, "%s: Resume notifier called!\n",
 					__func__);
@@ -12859,9 +12858,9 @@ static int drm_notifier_callback(struct notifier_block *self,
 				pt_debug(cd->dev, DL_INFO, "%s: Resume notified!\n", __func__);
 			}
 		}
-	} else if (*blank == DRM_PANEL_BLANK_LP || *blank == DRM_PANEL_BLANK_POWERDOWN) {
+	} else if (notification->notif_type == DRM_PANEL_EVENT_BLANK_LP) {
 		pt_debug(cd->dev, DL_INFO, "%s: LOWPOWER!\n", __func__);
-		if (event == DRM_PANEL_EARLY_EVENT_BLANK) {
+		if (notification->notif_type == DRM_PANEL_EVENT_BLANK) {
 			if (cd->fb_state != FB_OFF) {
 #if defined(CONFIG_PM_SLEEP)
 				pt_debug(cd->dev, DL_INFO, "%s: Suspend notifier called!\n",
@@ -12878,16 +12877,16 @@ static int drm_notifier_callback(struct notifier_block *self,
 				cd->fb_state = FB_OFF;
 				pt_debug(cd->dev, DL_INFO, "%s: Suspend notified!\n", __func__);
 			}
-		} else if (event == DRM_PANEL_EVENT_BLANK) {
-			pt_debug(cd->dev, DL_INFO, "%s: suspend: event = %lu, not care\n",
-				__func__, event);
+		} else if (notification->notif_type == DRM_PANEL_EVENT_BLANK) {
+			pt_debug(cd->dev, DL_INFO, "%s: suspend: event = %d, not care\n",
+				__func__, notification->notif_type);
 		}
 	} else {
 		pt_debug(cd->dev, DL_INFO, "%s: DRM BLANK(%d) do not need process\n",
-			__func__, *blank);
+			__func__, notification->notif_type);
 	}
 exit:
-	return 0;
+	return;
 }
 
 /*******************************************************************************
@@ -12900,9 +12899,7 @@ exit:
  ******************************************************************************/
 static void pt_setup_drm_notifier(struct pt_core_data *cd)
 {
-	cd->fb_state = FB_NONE;
-	cd->fb_notifier.notifier_call = drm_notifier_callback;
-	pt_debug(cd->dev, DL_INFO, "%s: Setting up drm notifier\n", __func__);
+	void *cookie = NULL;
 
 	if (!active_panel)
 		pt_debug(cd->dev, DL_ERROR,
@@ -12919,11 +12916,9 @@ static void pt_setup_drm_notifier(struct pt_core_data *cd)
 		INIT_WORK(&cd->suspend_work, pt_suspend_work);
 	}
 
-	if (active_panel &&
-		drm_panel_notifier_register(active_panel,
-			&cd->fb_notifier) < 0)
-		pt_debug(cd->dev, DL_ERROR,
-			"%s: Register notifier failed!\n", __func__);
+	cookie = panel_event_notifier_register(PANEL_EVENT_NOTIFICATION_PRIMARY,
+			PANEL_EVENT_NOTIFIER_CLIENT_PRIMARY_TOUCH,
+			active_panel,&drm_notifier_callback, cd);
 }
 #elif defined(CONFIG_FB)
 /*******************************************************************************
@@ -17974,7 +17969,7 @@ int pt_release(struct pt_core_data *cd)
 	unregister_early_suspend(&cd->es);
 #elif defined(CONFIG_DRM)
 	if (active_panel)
-		drm_panel_notifier_unregister(active_panel, &cd->fb_notifier);
+		panel_event_notifier_unregister(&cd->fb_notifier);
 #elif defined(CONFIG_FB)
 	fb_unregister_client(&cd->fb_notifier);
 #endif
