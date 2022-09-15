@@ -313,6 +313,7 @@ enum sde_crtc_hw_fence_flags {
  * @misr_reconfigure : boolean entry indicates misr reconfigure status
  * @misr_frame_count  : misr frame count provided by client
  * @misr_data     : store misr data before turning off the clocks.
+ * @idle_notify_work: delayed worker to notify idle timeout to user space
  * @power_event   : registered power event handle
  * @cur_perf      : current performance committed to clock/bandwidth driver
  * @plane_mask_old: keeps track of the planes used in the previous commit
@@ -410,6 +411,7 @@ struct sde_crtc {
 	bool misr_enable_debugfs;
 	bool misr_reconfigure;
 	u32 misr_frame_count;
+	struct kthread_delayed_work idle_notify_work;
 
 	struct sde_power_event *power_event;
 
