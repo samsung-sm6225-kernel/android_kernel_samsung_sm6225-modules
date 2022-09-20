@@ -1258,7 +1258,7 @@ int dsi_message_validate_tx_mode(struct dsi_ctrl *dsi_ctrl,
 	if (*flags & DSI_CTRL_CMD_FIFO_STORE) {
 		/* if command size plus header is greater than fifo size */
 		if ((cmd_len + 4) > DSI_CTRL_MAX_CMD_FIFO_STORE_SIZE) {
-			DSI_CTRL_ERR(dsi_ctrl, "Cannot transfer Cmd in FIFO config\n");
+			DSI_CTRL_DEBUG(dsi_ctrl, "Cannot transfer Cmd in FIFO config\n");
 			return -ENOTSUPP;
 		}
 		if (!dsi_ctrl->hw.ops.kickoff_fifo_command) {
@@ -1497,7 +1497,7 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl, struct dsi_cmd_desc *cmd_de
 	/* Validate the mode before sending the command */
 	rc = dsi_message_validate_tx_mode(dsi_ctrl, msg->tx_len, flags);
 	if (rc) {
-		DSI_CTRL_ERR(dsi_ctrl,
+		DSI_CTRL_DEBUG(dsi_ctrl,
 			"Cmd tx validation failed, cannot transfer cmd\n");
 		if(*flags & DSI_CTRL_CMD_FIFO_STORE ) {
 			rc = 0;
