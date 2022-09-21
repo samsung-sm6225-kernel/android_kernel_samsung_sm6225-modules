@@ -30,6 +30,10 @@ ifeq ($(KERNEL_BUILD), 0)
 		include $(AUDIO_ROOT)/config/litoauto.conf
 		INCS    +=  -include $(AUDIO_ROOT)/config/litoautoconf.h
 	endif
+	ifeq ($(CONFIG_ARCH_MONACO), y)
+		include $(AUDIO_ROOT)/config/monacoauto.conf
+		INCS    +=  -include $(AUDIO_ROOT)/config/monacoautoconf.h
+	endif
 endif
 
 # As per target team, build is done as follows:

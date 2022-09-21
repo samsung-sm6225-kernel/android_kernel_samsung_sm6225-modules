@@ -44,6 +44,10 @@ ifeq ($(KERNEL_BUILD), 0)
 		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/bengalautoconf.h
 	endif
+	ifeq ($(CONFIG_ARCH_MONACO), y)
+		include $(AUDIO_ROOT)/config/monacoauto.conf
+		INCS    +=  -include $(AUDIO_ROOT)/config/monacoautoconf.h
+	endif
 	ifeq ($(CONFIG_ARCH_QCS405), y)
 		include $(AUDIO_ROOT)/config/qcs405auto.conf
 		export
