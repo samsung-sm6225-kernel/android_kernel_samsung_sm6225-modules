@@ -549,7 +549,7 @@ static int gpr_probe(struct rpmsg_device *rpdev)
 		GPR_DOMAIN_MODEM == gpr_priv->dest_domain_id) {
 		schedule_work(&gpr_priv->notifier_reg_work);
 	} else {
-		dev_err(dev, "%s: invalid dest_domain_id %s\n", __func__,
+		dev_err(dev, "%s: invalid dest_domain_id %d\n", __func__,
 		  gpr_priv->dest_domain_id);
 		return -EINVAL;
 	}

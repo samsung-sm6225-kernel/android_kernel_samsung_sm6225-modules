@@ -586,7 +586,7 @@ int msm_audio_hyp_unassign(struct msm_audio_fd_data *msm_audio_fd_data) {
 		ret = hyp_assign_phys(msm_audio_fd_data->paddr, msm_audio_fd_data->plen,
 			source_vm_unmap, 2, dest_vm_unmap, dest_perms_unmap, 1);
 		if (ret < 0) {
-			pr_err("%s: hyp unassign failed result = %d addr = 0x%pK size = %d\n",
+			pr_err("%s: hyp unassign failed result = %d addr = 0x%lld size = %ld\n",
 			__func__, ret, msm_audio_fd_data->paddr, msm_audio_fd_data->plen);
 		}
 		msm_audio_fd_data->hyp_assign = false;
@@ -722,7 +722,7 @@ static long msm_audio_ion_ioctl(struct file *file, unsigned int ioctl_num,
 		ret = hyp_assign_phys(paddr, pa_len, source_vm_map, 1,
 		                      dest_vm_map, dest_perms_map, 2);
 		if (ret < 0) {
-			pr_err("%s: hyp assign failed result = %d addr = 0x%pK size = %d\n",
+			pr_err("%s: hyp assign failed result = %d addr = 0x%lld size = %ld\n",
 					__func__, ret, paddr, pa_len);
 			return ret;
 		}
@@ -740,7 +740,7 @@ static long msm_audio_ion_ioctl(struct file *file, unsigned int ioctl_num,
 		ret = hyp_assign_phys(paddr, pa_len, source_vm_unmap, 2,
 		                      dest_vm_unmap, dest_perms_unmap, 1);
 		if (ret < 0) {
-			pr_err("%s: hyp unassign failed result = %d addr = 0x%pK size = %d\n",
+			pr_err("%s: hyp unassign failed result = %d addr = 0x%lld size = %ld\n",
 					__func__, ret, paddr, pa_len);
 			return ret;
 		}
