@@ -13,6 +13,12 @@ ifeq ($(KERNEL_BUILD), 1)
 	AUDIO_ROOT := $(AUDIO_BLD_DIR)/techpack/audio
 endif
 
+ifeq ($(TARGET_SUPPORT), sa525m)
+	include $(AUDIO_ROOT)/config/sa525mauto.conf
+	export
+	INCS    +=  -include $(AUDIO_ROOT)/config/sa525mautoconf.h
+endif
+
 ifeq ($(CONFIG_SND_SOC_AUTO), y)
 	ifdef CONFIG_SND_SOC_SA8155
 		include $(AUDIO_ROOT)/config/sa8155auto.conf
@@ -145,6 +151,11 @@ ifndef CONFIG_SND_SOC_SDX
 endif
 endif
 
+ifdef CONFIG_MSM_CDC_PIN_CTRL
+	CORE_OBJS += msm-cdc-pinctrl.o
+endif
+
+
 ifdef CONFIG_WCD9XXX_CODEC_CORE_V2
 	CORE_OBJS += wcd9xxx-core-init.o
 	CORE_OBJS += msm-cdc-pinctrl.o
@@ -274,6 +285,9 @@ endif
 obj-$(CONFIG_WCD9XXX_CODEC_CORE) += wcd_core_dlkm.o
 obj-$(CONFIG_WCD9XXX_CODEC_CORE_V2) += wcd_core_dlkm.o
 wcd_core_dlkm-y := $(CORE_OBJS)
+
+obj-$(CONFIG_MSM_CDC_PIN_CTRL) += cdc_pin_dlkm.o
+cdc_pin_dlkm-y := $(CORE_OBJS)
 
 obj-$(CONFIG_SND_SOC_WCD9XXX_V2) += wcd9xxx_dlkm.o
 wcd9xxx_dlkm-y := $(WCD9XXX_OBJS)
