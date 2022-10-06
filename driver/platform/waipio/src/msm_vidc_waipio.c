@@ -1828,16 +1828,36 @@ static struct msm_platform_inst_capability instance_data_tofino[] = {
 		{0}, {0},
 		NULL, msm_vidc_set_q16},
 
+	/* WA to play-back HSR@480 recorded clip in Ukee
+	 * The I/P super-frame consecutive buffer time-stamp difference in Ukee is 16.621 ms so
+	 * FPS = (1000 / 16.621) * 8(batch size)
+	 * FPS = 481.318
+	 *
+	 * Due to this time-stamp issue video is encoded @482 FPS, even if client is
+	 * configured at 480 FPS. So limit max supported FPS value as 482 instead of 480.
+	 */
 	{FRAME_RATE, DEC, CODECS_ALL,
-		(1 << 16), (480 << 16),
+		(1 << 16), (482 << 16),
 		1, (30 << 16)},
 
 	{FRAME_RATE, DEC, VP9,
 		(MINIMUM_FPS << 16), (MAXIMUM_VP9_FPS << 16),
 		1, (DEFAULT_FPS << 16)},
 
-	{OPERATING_RATE, ENC|DEC, CODECS_ALL,
+	{OPERATING_RATE, ENC, CODECS_ALL,
 		(1 << 16), (480 << 16),
+		1, (30 << 16)},
+
+	/* WA to play-back HSR@480 recorded clip in Ukee
+	 * The I/P super-frame consecutive buffer time-stamp difference in Ukee is 16.621 ms so
+	 * FPS = (1000 / 16.621) * 8(batch size)
+	 * FPS = 481.318
+	 *
+	 * Due to this time-stamp issue video is encoded @482 FPS, even if client is
+	 * configured at 480 FPS. So limit max supported FPS value as 482 instead of 480.
+	 */
+	{OPERATING_RATE, DEC, CODECS_ALL,
+		(1 << 16), (482 << 16),
 		1, (30 << 16)},
 
 	{OPERATING_RATE, DEC, VP9,
@@ -3291,10 +3311,6 @@ static struct msm_vidc_efuse_data efuse_data_tofino[] = {
 	EFUSE_ENTRY(0x221C8118, 4, 0x800, 0xB, SKU_VERSION),
 };
 
-static struct allowed_clock_rates_table clock_data_tofino[] = {
-	{239999999}, {338000000}
-};
-
 static struct msm_vidc_platform_data waipio_data = {
 	.core_data = core_data_waipio,
 	.core_data_size = ARRAY_SIZE(core_data_waipio),
@@ -3345,12 +3361,6 @@ static int msm_vidc_init_data(struct msm_vidc_core *core)
 
 		/* override the max allowed bus votes data */
 		platform_data->bus_bw_nrt = bus_bw_nrt_tofino;
-
-		/* Override with SKU clock data into dt */
-		core->dt->allowed_clks_tbl = clock_data_tofino;
-		core->dt->allowed_clks_tbl_size =
-			ARRAY_SIZE(clock_data_tofino);
-		msm_vidc_sort_table(core);
 	}
 
 	return rc;
