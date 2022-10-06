@@ -19,9 +19,7 @@ include $(call all-subdir-makefiles)
 endif
 
 # Build/Package only in case of supported target
-ifeq ($(call is-board-platform-in-list,$(TARGET_BOARD_PLATFORM)), true)
-
-LOCAL_PATH := $(call my-dir)
+ifeq ($(call is-board-platform-in-list,taro kalama bengal), true)
 
 # This makefile is only for DLKM
 ifneq ($(findstring vendor,$(LOCAL_PATH)),)
