@@ -449,6 +449,7 @@ static int cnss_pci_smmu_fault_handler(struct iommu_domain *domain,
 		return -ENODEV;
 	}
 
+	pci_priv->is_smmu_fault = true;
 	cnss_pci_update_status(pci_priv, CNSS_FW_DOWN);
 	cnss_force_fw_assert(&pci_priv->pci_dev->dev);
 
@@ -519,7 +520,7 @@ int cnss_pci_init_smmu(struct cnss_pci_data *pci_priv)
 int _cnss_pci_get_reg_dump(struct cnss_pci_data *pci_priv,
 			   u8 *buf, u32 len)
 {
-	return 0;
+	return msm_pcie_reg_dump(pci_priv->pci_dev, buf, len);
 }
 
 #if IS_ENABLED(CONFIG_ARCH_QCOM)

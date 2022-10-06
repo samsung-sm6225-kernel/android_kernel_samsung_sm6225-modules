@@ -1516,7 +1516,7 @@ static int cnss_subsys_powerup(const struct subsys_desc *subsys_desc)
 	}
 
 	if (!plat_priv->driver_state) {
-		cnss_pr_dbg("Powerup is ignored\n");
+		cnss_pr_dbg("subsys powerup is ignored\n");
 		return 0;
 	}
 
@@ -1543,7 +1543,7 @@ static int cnss_subsys_shutdown(const struct subsys_desc *subsys_desc,
 	}
 
 	if (!plat_priv->driver_state) {
-		cnss_pr_dbg("shutdown is ignored\n");
+		cnss_pr_dbg("subsys shutdown is ignored\n");
 		return 0;
 	}
 
@@ -2291,14 +2291,14 @@ static void cnss_driver_event_work(struct work_struct *work)
 		case CNSS_DRIVER_EVENT_IDLE_RESTART:
 			set_bit(CNSS_DRIVER_IDLE_RESTART,
 				&plat_priv->driver_state);
-			/* fall through */
+			fallthrough;
 		case CNSS_DRIVER_EVENT_POWER_UP:
 			ret = cnss_power_up_hdlr(plat_priv);
 			break;
 		case CNSS_DRIVER_EVENT_IDLE_SHUTDOWN:
 			set_bit(CNSS_DRIVER_IDLE_SHUTDOWN,
 				&plat_priv->driver_state);
-			/* fall through */
+			fallthrough;
 		case CNSS_DRIVER_EVENT_POWER_DOWN:
 			ret = cnss_power_down_hdlr(plat_priv);
 			break;
@@ -2831,8 +2831,17 @@ static int cnss_register_ramdump_v1(struct cnss_plat_data *plat_priv)
 	dev = &plat_priv->plat_dev->dev;
 	ramdump_info = &plat_priv->ramdump_info;
 
-	if (of_property_read_u32(dev->of_node, "qcom,wlan-ramdump-dynamic",
-				 &ramdump_size) == 0) {
+	if (plat_priv->dt_type != CNSS_DTT_MULTIEXCHG) {
+		/* dt type: legacy or converged */
+		ret = of_property_read_u32(dev->of_node,
+					   "qcom,wlan-ramdump-dynamic",
+					   &ramdump_size);
+	} else {
+		ret = of_property_read_u32(plat_priv->dev_node,
+					   "qcom,wlan-ramdump-dynamic",
+					   &ramdump_size);
+	}
+	if (ret == 0) {
 		ramdump_info->ramdump_va =
 			dma_alloc_coherent(dev, ramdump_size,
 					   &ramdump_info->ramdump_pa,
@@ -2915,8 +2924,17 @@ static int cnss_register_ramdump_v2(struct cnss_plat_data *plat_priv)
 	info_v2 = &plat_priv->ramdump_info_v2;
 	dump_data = &info_v2->dump_data;
 
-	if (of_property_read_u32(dev->of_node, "qcom,wlan-ramdump-dynamic",
-				 &ramdump_size) == 0)
+	if (plat_priv->dt_type != CNSS_DTT_MULTIEXCHG) {
+		/* dt type: legacy or converged */
+		ret = of_property_read_u32(dev->of_node,
+					   "qcom,wlan-ramdump-dynamic",
+					   &ramdump_size);
+	} else {
+		ret = of_property_read_u32(plat_priv->dev_node,
+					   "qcom,wlan-ramdump-dynamic",
+					   &ramdump_size);
+	}
+	if (ret == 0)
 		info_v2->ramdump_size = ramdump_size;
 
 	cnss_pr_dbg("Ramdump size 0x%lx\n", info_v2->ramdump_size);
@@ -3738,6 +3756,12 @@ int cnss_wlan_hw_disable_check(struct cnss_plat_data *plat_priv)
 	int ret;
 	u8 state = 0;
 
+	/* Once this flag is set, secure peripheral feature
+	 * will not be supported till next reboot
+	 */
+	if (plat_priv->sec_peri_feature_disable)
+		return 0;
+
 	/* get rootObj */
 	ret = get_client_env_object(&client_env);
 	if (ret) {
@@ -3749,6 +3773,7 @@ int cnss_wlan_hw_disable_check(struct cnss_plat_data *plat_priv)
 		cnss_pr_dbg("Failed to get app_object, ret: %d\n",  ret);
 		if (ret == FEATURE_NOT_SUPPORTED) {
 			ret = 0; /* Do not Assert */
+			plat_priv->sec_peri_feature_disable = true;
 			cnss_pr_dbg("Secure HW feature not supported\n");
 		}
 		goto exit_release_clientenv;
@@ -3763,6 +3788,7 @@ int cnss_wlan_hw_disable_check(struct cnss_plat_data *plat_priv)
 	if (ret) {
 		if (ret == PERIPHERAL_NOT_FOUND) {
 			ret = 0; /* Do not Assert */
+			plat_priv->sec_peri_feature_disable = true;
 			cnss_pr_dbg("Secure HW mode is not updated. Peripheral not found\n");
 		}
 		goto exit_release_app_obj;
@@ -3840,7 +3866,9 @@ static int cnss_misc_init(struct cnss_plat_data *plat_priv)
 		cnss_pr_err("QMI IPC connection call back register failed, err = %d\n",
 			    ret);
 
-	plat_priv->sram_dump = kcalloc(SRAM_DUMP_SIZE, 1, GFP_KERNEL);
+	if (plat_priv->device_id == QCA6490_DEVICE_ID &&
+	    cnss_get_host_build_type() == QMI_HOST_BUILD_TYPE_PRIMARY_V01)
+		plat_priv->sram_dump = kcalloc(SRAM_DUMP_SIZE, 1, GFP_KERNEL);
 
 	return 0;
 }
@@ -3965,7 +3993,7 @@ static int cnss_get_dev_cfg_node(struct cnss_plat_data *plat_priv)
 	u8 gpio_value;
 
 
-	if (!plat_priv->is_converged_dt)
+	if (plat_priv->dt_type != CNSS_DTT_CONVERGED)
 		return 0;
 
 	/* Parses the wlan_sw_ctrl gpio which is used to identify device */
@@ -4021,11 +4049,22 @@ static int cnss_get_dev_cfg_node(struct cnss_plat_data *plat_priv)
 	return -EINVAL;
 }
 
-static inline bool
-cnss_is_converged_dt(struct cnss_plat_data *plat_priv)
+static inline u32
+cnss_dt_type(struct cnss_plat_data *plat_priv)
 {
-	return of_property_read_bool(plat_priv->plat_dev->dev.of_node,
-				     "qcom,converged-dt");
+	bool is_converged_dt = of_property_read_bool(
+		plat_priv->plat_dev->dev.of_node, "qcom,converged-dt");
+	bool is_multi_wlan_xchg;
+
+	if (is_converged_dt)
+		return CNSS_DTT_CONVERGED;
+
+	is_multi_wlan_xchg = of_property_read_bool(
+		plat_priv->plat_dev->dev.of_node, "qcom,multi-wlan-exchg");
+
+	if (is_multi_wlan_xchg)
+		return CNSS_DTT_MULTIEXCHG;
+	return CNSS_DTT_LEGACY;
 }
 
 static int cnss_wlan_device_init(struct cnss_plat_data *plat_priv)
@@ -4072,7 +4111,8 @@ int cnss_wlan_hw_enable(void)
 
 	ret = cnss_wlan_device_init(plat_priv);
 	if (ret) {
-		CNSS_ASSERT(0);
+		if (!test_bit(CNSS_WLAN_HW_DISABLED, &plat_priv->driver_state))
+			CNSS_ASSERT(0);
 		return ret;
 	}
 
@@ -4119,8 +4159,12 @@ static int cnss_probe(struct platform_device *plat_dev)
 	}
 
 	plat_priv->plat_dev = plat_dev;
+	plat_priv->dev_node = NULL;
 	plat_priv->device_id = device_id->driver_data;
-	plat_priv->is_converged_dt = cnss_is_converged_dt(plat_priv);
+	plat_priv->dt_type = cnss_dt_type(plat_priv);
+	cnss_pr_dbg("Probing platform driver from dt type: %d\n",
+		    plat_priv->dt_type);
+
 	plat_priv->use_fw_path_with_prefix =
 		cnss_use_fw_path_with_prefix(plat_priv);
 
@@ -4130,7 +4174,7 @@ static int cnss_probe(struct platform_device *plat_dev)
 		goto reset_plat_dev;
 	}
 
-	plat_priv->bus_type = cnss_get_bus_type(plat_priv->device_id);
+	plat_priv->bus_type = cnss_get_bus_type(plat_priv);
 	plat_priv->use_nv_mac = cnss_use_nv_mac(plat_priv);
 	plat_priv->driver_mode = CNSS_DRIVER_MODE_MAX;
 	cnss_set_plat_priv(plat_dev, plat_priv);
@@ -4246,6 +4290,7 @@ static int cnss_remove(struct platform_device *plat_dev)
 	cnss_dms_deinit(plat_priv);
 	cnss_qmi_deinit(plat_priv);
 	cnss_event_work_deinit(plat_priv);
+	cnss_cancel_dms_work();
 	cnss_remove_sysfs(plat_priv);
 	cnss_unregister_bus_scale(plat_priv);
 	cnss_unregister_esoc(plat_priv);
