@@ -693,9 +693,12 @@ static void dsi_display_set_cmd_tx_ctrl_flags(struct dsi_display *display,
 		 *    tx is used.
 		 */
 		flags = DSI_CTRL_CMD_FETCH_MEMORY;
-		pr_debug("Configure Cmd trasfer mode to DSI_CTRL_CMD_FIFO_STORE\n");
-		flags &= ~DSI_CTRL_CMD_FETCH_MEMORY;
-		flags |= DSI_CTRL_CMD_FIFO_STORE;
+		if (ctrl->ctrl->secure_mode) {
+			flags &= ~DSI_CTRL_CMD_FETCH_MEMORY;
+			flags |= DSI_CTRL_CMD_FIFO_STORE;
+		} else if (msg->tx_len > DSI_EMBEDDED_MODE_DMA_MAX_SIZE_BYTES) {
+			flags |= DSI_CTRL_CMD_NON_EMBEDDED_MODE;
+		}
 
 		/* Set flags needed for broadcast. Read commands are always unicast */
 		if (!(msg->flags & MIPI_DSI_MSG_UNICAST_COMMAND) && (display->ctrl_count > 1))
