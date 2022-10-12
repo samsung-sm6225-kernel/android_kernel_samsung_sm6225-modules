@@ -1499,13 +1499,7 @@ static int dsi_message_tx(struct dsi_ctrl *dsi_ctrl, struct dsi_cmd_desc *cmd_de
 	if (rc) {
 		DSI_CTRL_ERR(dsi_ctrl,
 			"Cmd tx validation failed, cannot transfer cmd\n");
-		if(*flags & DSI_CTRL_CMD_FIFO_STORE ) {
-			rc = 0;
-			DSI_CTRL_DEBUG(dsi_ctrl,"In Fifo Mode ignore Cmd tx validation \
-				fail restricting max size \n");
-			} else	{
-				rc = -ENOTSUPP;
-		}
+		rc = -ENOTSUPP;
 		goto error;
 	}
 
