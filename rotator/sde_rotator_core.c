@@ -1060,7 +1060,7 @@ static int sde_rotator_init_queue(struct sde_rot_mgr *mgr)
 {
 	int i, size, ret = 0;
 	char name[32];
-	//struct sched_param param = { .sched_priority = 5 };
+	struct sched_param param = { .sched_priority = 5 };
 
 	size = sizeof(struct sde_rot_queue) * mgr->queue_count;
 	mgr->commitq = devm_kzalloc(mgr->device, size, GFP_KERNEL);
@@ -1080,14 +1080,14 @@ static int sde_rotator_init_queue(struct sde_rot_mgr *mgr)
 			break;
 		}
 
-		/*ret = sched_setscheduler(mgr->commitq[i].rot_thread,
+		ret = sched_setscheduler(mgr->commitq[i].rot_thread,
 			SCHED_FIFO, &param);
 		if (ret) {
 			SDEROT_ERR(
 				"failed to set kthread priority for commitq %d\n",
 				ret);
 			break;
-		}*/
+		}
 
 		/* timeline not used */
 		mgr->commitq[i].timeline = NULL;
@@ -1111,14 +1111,14 @@ static int sde_rotator_init_queue(struct sde_rot_mgr *mgr)
 			break;
 		}
 
-		/*ret = sched_setscheduler(mgr->doneq[i].rot_thread,
+		ret = sched_setscheduler(mgr->doneq[i].rot_thread,
 			SCHED_FIFO, &param);
 		if (ret) {
 			SDEROT_ERR(
 				"failed to set kthread priority for doneq %d\n",
 				ret);
 			break;
-		}*/
+		}
 
 		/* timeline not used */
 		mgr->doneq[i].timeline = NULL;

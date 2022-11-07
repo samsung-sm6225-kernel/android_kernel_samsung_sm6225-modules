@@ -928,9 +928,10 @@ static int sde_mdp_map_buffer(struct sde_mdp_img_data *data, bool rotator,
 		data->srcp_table = sgt;
 
 		data->len = 0;
-		for_each_sg(sgt->sgl, sg, sgt->orig_nents, i) {
+		for_each_sg(sgt->sgl, sg, sgt->nents, i) {
 			data->len += sg->length;
 		}
+
 		if (sde_mdp_is_map_needed(data)) {
 			data->addr = data->srcp_table->sgl->dma_address;
 			SDEROT_DBG("map %pad/%lx f:%x\n",
