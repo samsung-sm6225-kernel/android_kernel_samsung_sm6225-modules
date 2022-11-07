@@ -453,6 +453,7 @@ struct sde_rot_mgr {
 	struct sde_rot_queue *commitq;
 	struct sde_rot_queue *doneq;
 
+	struct kthread_work thread_priority_work;
 	/*
 	 * managing all the open file sessions to bw calculations,
 	 * and resource clean up during suspend

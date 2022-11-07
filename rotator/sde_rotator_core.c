@@ -1052,6 +1052,18 @@ static void sde_rotator_put_hw_resource(struct sde_rot_queue *queue,
 			entry->item.session_id, entry->item.sequence_id);
 }
 
+static void sde_rotator_thread_priority_worker(struct kthread_work *work)
+{
+	int ret = 0;
+	struct sched_param param = { 0 };
+	struct task_struct *task = current->group_leader;
+	param.sched_priority = 5;
+	ret = sched_setscheduler(task, SCHED_FIFO, &param);
+	if (ret)
+		pr_warn("pid:%d name:%s priority update failed: %d\n",
+			current->tgid, task->comm, ret);
+}
+
 /*
  * caller will need to call sde_rotator_deinit_queue when
  * the function returns error
@@ -1060,13 +1072,13 @@ static int sde_rotator_init_queue(struct sde_rot_mgr *mgr)
 {
 	int i, size, ret = 0;
 	char name[32];
-	struct sched_param param = { .sched_priority = 5 };
 
 	size = sizeof(struct sde_rot_queue) * mgr->queue_count;
 	mgr->commitq = devm_kzalloc(mgr->device, size, GFP_KERNEL);
 	if (!mgr->commitq)
 		return -ENOMEM;
 
+	kthread_init_work(&mgr->thread_priority_work, sde_rotator_thread_priority_worker);
 	for (i = 0; i < mgr->queue_count; i++) {
 		snprintf(name, sizeof(name), "rot_commitq_%d_%d",
 				mgr->device->id, i);
@@ -1080,15 +1092,7 @@ static int sde_rotator_init_queue(struct sde_rot_mgr *mgr)
 			break;
 		}
 
-		ret = sched_setscheduler(mgr->commitq[i].rot_thread,
-			SCHED_FIFO, &param);
-		if (ret) {
-			SDEROT_ERR(
-				"failed to set kthread priority for commitq %d\n",
-				ret);
-			break;
-		}
-
+		kthread_queue_work(&mgr->commitq[i].rot_kw, &mgr->thread_priority_work);
 		/* timeline not used */
 		mgr->commitq[i].timeline = NULL;
 	}
@@ -1111,15 +1115,7 @@ static int sde_rotator_init_queue(struct sde_rot_mgr *mgr)
 			break;
 		}
 
-		ret = sched_setscheduler(mgr->doneq[i].rot_thread,
-			SCHED_FIFO, &param);
-		if (ret) {
-			SDEROT_ERR(
-				"failed to set kthread priority for doneq %d\n",
-				ret);
-			break;
-		}
-
+		kthread_queue_work(&mgr->doneq[i].rot_kw, &mgr->thread_priority_work);
 		/* timeline not used */
 		mgr->doneq[i].timeline = NULL;
 	}
