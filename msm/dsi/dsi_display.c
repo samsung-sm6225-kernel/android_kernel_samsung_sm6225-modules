@@ -2713,7 +2713,7 @@ error:
 	return rc;
 }
 
-static int dsi_display_set_clk_src(struct dsi_display *display, bool set_xo)
+int dsi_display_set_clk_src(struct dsi_display *display, bool set_xo)
 {
 	int rc = 0;
 	int i;
@@ -4191,6 +4191,9 @@ static int dsi_display_parse_dt(struct dsi_display *display)
 
 	/* Parse TE data */
 	dsi_display_parse_te_data(display);
+
+	display->needs_clk_src_reset = of_property_read_bool(of_node,
+			"qcom,needs-clk-src-reset");
 
 	/* Parse all external bridges from port 0 */
 	display_for_each_ctrl(i, display) {
