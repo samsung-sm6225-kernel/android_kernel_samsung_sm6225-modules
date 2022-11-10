@@ -4552,9 +4552,8 @@ static int sde_kms_pd_enable(struct generic_pm_domain *genpd)
 
 	SDE_DEBUG("\n");
 
-	rc = pm_runtime_resume_and_get(sde_kms->dev->dev);
+	rc = pm_runtime_get_sync(sde_kms->dev->dev);
 	rc = (rc > 0) ? 0 : rc;
-
 	SDE_EVT32(rc, genpd->device_count);
 
 	return rc;
