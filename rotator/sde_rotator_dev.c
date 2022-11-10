@@ -535,9 +535,8 @@ static const struct vb2_ops sde_rotator_vb2_q_ops = {
  * @size: Size of the buffer
  * @dma_dir: DMA data direction of the given buffer.
  */
-static void *sde_rotator_get_userptr(struct device *dev,
-	unsigned long vaddr, unsigned long size,
-	enum dma_data_direction dma_dir)
+static void *sde_rotator_get_userptr(struct vb2_buffer *vb, struct device *dev,
+	unsigned long vaddr, unsigned long size)
 {
 	struct sde_rotator_ctx *ctx = (struct sde_rotator_ctx *)dev;
 	struct sde_rotator_device *rot_dev = ctx->rot_dev;
@@ -3478,13 +3477,13 @@ static int sde_rotator_probe(struct platform_device *pdev)
 	vdev->release = video_device_release;
 	vdev->v4l2_dev = &rot_dev->v4l2_dev;
 	vdev->vfl_dir = VFL_DIR_M2M;
-	vdev->vfl_type = VFL_TYPE_GRABBER;
+	vdev->vfl_type = VFL_TYPE_VIDEO;
 	vdev->device_caps = V4L2_CAP_STREAMING | V4L2_CAP_VIDEO_M2M |
 		V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_VIDEO_CAPTURE;
 
 	strlcpy(vdev->name, SDE_ROTATOR_DRV_NAME, sizeof(vdev->name));
 
-	ret = video_register_device(vdev, VFL_TYPE_GRABBER,
+	ret = video_register_device(vdev, VFL_TYPE_VIDEO,
 			SDE_ROTATOR_BASE_DEVICE_NUMBER);
 	if (ret < 0) {
 		SDEDEV_ERR(&pdev->dev, "fail register video device %d\n",

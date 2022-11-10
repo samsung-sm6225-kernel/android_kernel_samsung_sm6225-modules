@@ -1238,7 +1238,7 @@ static void sde_hw_rotator_map_vaddr(struct sde_dbg_buf *dbgbuf,
 static void sde_hw_rotator_unmap_vaddr(struct sde_dbg_buf *dbgbuf)
 {
 	if (dbgbuf->vaddr) {
-		dma_buf_kunmap(dbgbuf->dmabuf, 0, dbgbuf->vaddr);
+		dma_buf_vunmap(dbgbuf->dmabuf, dbgbuf->vaddr);
 		dma_buf_end_cpu_access(dbgbuf->dmabuf, DMA_FROM_DEVICE);
 	}
 
