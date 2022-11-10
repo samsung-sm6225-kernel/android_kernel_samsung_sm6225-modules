@@ -16,6 +16,7 @@ endif
 endif #TARGET_BOARD_AUTO
 
 ifeq ($(ENABLE_SECUREMSM_DLKM), true)
+ifeq ($(call is-board-platform-in-list,$(TARGET_BOARD_PLATFORM)),true)
 BOARD_VENDOR_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/tz_log_dlkm.ko \
       $(KERNEL_MODULES_OUT)/qcedev-mod_dlkm.ko \
       $(KERNEL_MODULES_OUT)/qcrypto-msm_dlkm.ko \
@@ -38,4 +39,5 @@ BOARD_VENDOR_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/qseecom_dlkm.ko
 BOARD_VENDOR_RAMDISK_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/qseecom_dlkm.ko
 BOARD_VENDOR_RAMDISK_RECOVERY_KERNEL_MODULES_LOAD += $(KERNEL_MODULES_OUT)/qseecom_dlkm.ko
 endif #TARGET_ENABLE_QSEECOM OR TARGET_BOARD_AUTO
+endif
 endif #ENABLE_SECUREMSM_DLKM
