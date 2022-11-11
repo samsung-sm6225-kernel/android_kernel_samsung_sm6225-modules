@@ -48,5 +48,5 @@ SND_SOC_DAILINK_DEFS(pri_tdm_tx_0,
 
 SND_SOC_DAILINK_DEFS(tlv320aic3x_codec,
 	DAILINK_COMP_ARRAY(COMP_CPU("snd-soc-dummy-dai")),
-	DAILINK_COMP_ARRAY(COMP_CODEC("tlv320aic3x-codec", "tlv320aic3x-hifi")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("tlv320aic3x", "tlv320aic3x-hifi")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("snd-soc-dummy")));
