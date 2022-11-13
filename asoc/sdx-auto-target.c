@@ -477,7 +477,7 @@ static struct snd_soc_dai_link msm_stub_dai_links[
 			 ARRAY_SIZE(msm_stub_be_dai_links)];
 
 static const struct of_device_id sdx_asoc_machine_of_match[]  = {
-	{ .compatible = "qcom,sdx-asoc-snd-tavil",
+	{ .compatible = "qcom,sdx-asoc-snd-auto",
 	  .data = "codec"},
 	{},
 };
