@@ -19,6 +19,7 @@ endif
 #ifeq ($(CONFIG_ARCH_PINEAPPLE), y)
 	include $(TOUCH_ROOT)/config/gki_pineappletouch.conf
 	LINUX_INC += -include $(TOUCH_ROOT)/config/gki_pineappletouchconf.h
+#endif
 
 #ifeq ($(CONFIG_ARCH_MONACO), y)
 	include $(TOUCH_ROOT)/config/gki_monacotouch.conf
