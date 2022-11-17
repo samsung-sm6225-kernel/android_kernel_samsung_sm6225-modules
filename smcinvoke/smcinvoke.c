@@ -64,7 +64,6 @@
 #define SMCINVOKE_SCM_EBUSY_MAX_RETRY		200
 
 
-
 /* TZ defined values - Start */
 #define SMCINVOKE_INVOKE_PARAM_ID		0x224
 #define SMCINVOKE_CB_RSP_PARAM_ID		0x22
@@ -80,7 +79,7 @@
  */
 #define SMCINVOKE_SERVER_STATE_DEFUNCT		1
 
-#define CBOBJ_MAX_RETRIES 5
+#define CBOBJ_MAX_RETRIES 50
 #define FOR_ARGS(ndxvar, counts, section) \
 	for (ndxvar = OBJECT_COUNTS_INDEX_##section(counts); \
 		ndxvar < (OBJECT_COUNTS_INDEX_##section(counts) \
@@ -283,7 +282,6 @@ struct smcinvoke_mem_obj {
 	uint64_t p_addr;
 	size_t p_addr_len;
 	struct list_head list;
-	bool is_smcinvoke_created_shmbridge;
 	uint64_t shmbridge_handle;
 };
 
@@ -649,7 +647,6 @@ static void smcinvoke_destroy_kthreads(void)
 static inline void free_mem_obj_locked(struct smcinvoke_mem_obj *mem_obj)
 {
 	int ret = 0;
-	bool is_bridge_created = mem_obj->is_smcinvoke_created_shmbridge;
 	struct dma_buf *dmabuf_to_free = mem_obj->dma_buf;
 	uint64_t shmbridge_handle = mem_obj->shmbridge_handle;
 	struct smcinvoke_shmbridge_deregister_pending_list *entry = NULL;
@@ -659,7 +656,7 @@ static inline void free_mem_obj_locked(struct smcinvoke_mem_obj *mem_obj)
 	mem_obj = NULL;
 	mutex_unlock(&g_smcinvoke_lock);
 
-	if (is_bridge_created)
+	if (shmbridge_handle)
 		ret = qtee_shmbridge_deregister(shmbridge_handle);
 	if (ret) {
 		pr_err("Error:%d delete bridge failed leaking memory 0x%x\n",
@@ -1140,13 +1137,7 @@ static int smcinvoke_create_bridge(struct smcinvoke_mem_obj *mem_obj)
 	ret = qtee_shmbridge_register(phys, size, vmid_list, perms_list, nelems,
 			tz_perm, &mem_obj->shmbridge_handle);
 
-	if (ret == 0) {
-		/* In case of ret=0/success handle has to be freed in memobj release */
-		mem_obj->is_smcinvoke_created_shmbridge = true;
-	} else if (ret == -EEXIST) {
-		ret = 0;
-		goto exit;
-	} else {
+	if (ret) {
 		pr_err("creation of shm bridge for mem_region_id %d failed ret %d\n",
 				mem_obj->mem_region_id, ret);
 		goto exit;
@@ -1383,6 +1374,7 @@ static void process_tzcb_req(void *buf, size_t buf_len, struct file **arr_filp)
 	int ret = OBJECT_ERROR_DEFUNCT;
 	int cbobj_retries = 0;
 	long timeout_jiff;
+	bool wait_interrupted = false;
 	struct smcinvoke_cb_txn *cb_txn = NULL;
 	struct smcinvoke_tzcb_req *cb_req = NULL, *tmp_cb_req = NULL;
 	struct smcinvoke_server_info *srvr_info = NULL;
@@ -1467,14 +1459,20 @@ static void process_tzcb_req(void *buf, size_t buf_len, struct file **arr_filp)
 	 */
 	wake_up_interruptible_all(&srvr_info->req_wait_q);
 	/* timeout before 1s otherwise tzbusy would come */
-	timeout_jiff = msecs_to_jiffies(1000);
+	timeout_jiff = msecs_to_jiffies(100);
 
 	while (cbobj_retries < CBOBJ_MAX_RETRIES) {
-		ret = wait_event_timeout(srvr_info->rsp_wait_q,
-				(cb_txn->state == SMCINVOKE_REQ_PROCESSED) ||
-				(srvr_info->state == SMCINVOKE_SERVER_STATE_DEFUNCT),
-				timeout_jiff);
-
+		if (wait_interrupted) {
+			ret = wait_event_timeout(srvr_info->rsp_wait_q,
+					(cb_txn->state == SMCINVOKE_REQ_PROCESSED) ||
+					(srvr_info->state == SMCINVOKE_SERVER_STATE_DEFUNCT),
+					timeout_jiff);
+		} else {
+			ret = wait_event_interruptible_timeout(srvr_info->rsp_wait_q,
+					(cb_txn->state == SMCINVOKE_REQ_PROCESSED) ||
+					(srvr_info->state == SMCINVOKE_SERVER_STATE_DEFUNCT),
+					timeout_jiff);
+		}
 		if (ret == 0) {
 			pr_err("CBobj timed out cb-tzhandle:%d, retry:%d, op:%d counts :%d\n",
 					cb_req->hdr.tzhandle, cbobj_retries,
@@ -1484,7 +1482,13 @@ static void process_tzcb_req(void *buf, size_t buf_len, struct file **arr_filp)
 					current->tgid, srvr_info->state,
 					srvr_info->server_id);
 		} else {
-			break;
+			/* wait_event returned due to a signal */
+			if (srvr_info->state != SMCINVOKE_SERVER_STATE_DEFUNCT &&
+					cb_txn->state != SMCINVOKE_REQ_PROCESSED) {
+				wait_interrupted = true;
+			} else {
+				break;
+			}
 		}
 		cbobj_retries++;
 	}

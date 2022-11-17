@@ -191,6 +191,8 @@ static void qcedev_ce_high_bw_req(struct qcedev_control *podev,
 {
 	int ret = 0;
 
+        if(podev == NULL) return;
+
 	mutex_lock(&qcedev_sent_bw_req);
 	if (high_bw_req) {
 		if (podev->high_bw_req_count == 0) {
@@ -319,7 +321,9 @@ static int qcedev_release(struct inode *inode, struct file *file)
 					__func__, podev);
 	}
 
-	qcedev_ce_high_bw_req(podev, false);
+	if (podev)
+		qcedev_ce_high_bw_req(podev, false);
+
 	if (qcedev_unmap_all_buffers(handle))
 		pr_err("%s: failed to unmap all ion buffers\n", __func__);
 
@@ -858,6 +862,8 @@ static int submit_req(struct qcedev_async_req *qcedev_areq,
 				pr_err("%s: waiting for req state to be done, retries = %d",
 						__func__, retries);
 			}
+			// This means there is no crypto error, timeout corner case.
+			qcedev_areq->offload_cipher_op_req.err = QCEDEV_OFFLOAD_NO_ERROR;
 			return 0;
 		}
 		tasklet_schedule(&podev->done_tasklet);
@@ -1778,6 +1784,8 @@ static int qcedev_smmu_ablk_offload_cipher(struct qcedev_async_req *areq,
 		}
 	}
 exit:
+	areq->cipher_req.creq.src = NULL;
+	areq->cipher_req.creq.dst = NULL;
 	return err;
 }
 
