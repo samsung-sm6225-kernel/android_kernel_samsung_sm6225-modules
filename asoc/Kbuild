@@ -13,6 +13,12 @@ ifeq ($(KERNEL_BUILD), 1)
 	AUDIO_ROOT := $(AUDIO_BLD_DIR)/techpack/audio
 endif
 
+ifeq ($(TARGET_SUPPORT), sa525m)
+	include $(AUDIO_ROOT)/config/sa525mauto.conf
+	export
+	INCS    +=  -include $(AUDIO_ROOT)/config/sa525mautoconf.h
+endif
+
 ifeq ($(CONFIG_SND_SOC_AUTO), y)
 	ifdef CONFIG_SND_SOC_SA8155
 		include $(AUDIO_ROOT)/config/sa8155auto.conf
@@ -206,6 +212,10 @@ ifdef CONFIG_SND_SOC_SDX
 	MACHINE_OBJS += sdx-target.o
 endif
 
+ifdef CONFIG_SND_SOC_SA525M
+	MACHINE_OBJS += sdx-auto-target.o
+endif
+
 LINUX_INC +=	-Iinclude/linux
 
 INCS +=		$(COMMON_INC) \
@@ -282,6 +292,9 @@ obj-$(CONFIG_SND_SOC_SA8155) += machine_dlkm.o
 machine_dlkm-y := $(MACHINE_OBJS)
 
 obj-$(CONFIG_SND_SOC_SDX) += machine_dlkm.o
+machine_dlkm-y := $(MACHINE_OBJS)
+
+obj-$(CONFIG_SND_SOC_SA525M) += machine_dlkm.o
 machine_dlkm-y := $(MACHINE_OBJS)
 
 # inject some build related information

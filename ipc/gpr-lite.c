@@ -132,6 +132,8 @@ int gpr_send_pkt(struct gpr_device *adev, struct gpr_pkt *pkt)
 
 	hdr = &pkt->hdr;
 	hdr->dst_domain_id = adev->domain_id;
+	if (adev->domain_id == GPR_DOMAIN_MODEM)
+		hdr->dst_domain_id = GPR_IDS_DOMAIN_ID_MODEM_V;
 	pkt_size = GPR_PKT_GET_PACKET_BYTE_SIZE(hdr->header);
 
 	dev_dbg(gpr->dev, "SVC_ID %d %s packet size %d\n",
@@ -164,6 +166,7 @@ static void gpr_modem_down(unsigned long opcode)
 
 static void gpr_modem_up(void)
 {
+	gpr_set_modem_state(GPR_SUBSYS_LOADED);
 	//if (apr_cmpxchg_modem_state(APR_SUBSYS_DOWN, APR_SUBSYS_UP) ==
 	//						APR_SUBSYS_DOWN)
 	//	wake_up(&modem_wait);
@@ -535,6 +538,9 @@ static int gpr_probe(struct rpmsg_device *rpdev)
 		return ret;
 	}
 
+	if (GPR_DOMAIN_MODEM == gpr_priv->dest_domain_id)
+		gpr_set_modem_state(GPR_SUBSYS_UP);
+
 	of_register_gpr_devices(dev);
 
 	INIT_WORK(&gpr_priv->notifier_reg_work, gpr_notifier_register);
@@ -543,7 +549,7 @@ static int gpr_probe(struct rpmsg_device *rpdev)
 		GPR_DOMAIN_MODEM == gpr_priv->dest_domain_id) {
 		schedule_work(&gpr_priv->notifier_reg_work);
 	} else {
-		dev_err(dev, "%s: invalid dest_domain_id %s\n", __func__,
+		dev_err(dev, "%s: invalid dest_domain_id %d\n", __func__,
 		  gpr_priv->dest_domain_id);
 		return -EINVAL;
 	}

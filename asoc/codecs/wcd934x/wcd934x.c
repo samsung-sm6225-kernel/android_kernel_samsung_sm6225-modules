@@ -11099,7 +11099,7 @@ static void tavil_add_child_devices(struct work_struct *work)
 		pdev->dev.parent = tavil->dev;
 		pdev->dev.of_node = node;
 
-		if (strcmp(node->name, "swr_master") == 0) {
+		if (strnstr(node->name, "swr_master", strlen("swr_master")) != NULL) {
 			ret = platform_device_add_data(pdev, platdata,
 						       sizeof(*platdata));
 			if (ret) {
@@ -11118,7 +11118,7 @@ static void tavil_add_child_devices(struct work_struct *work)
 			goto err_pdev_add;
 		}
 
-		if (strcmp(node->name, "swr_master") == 0) {
+		if (strnstr(node->name, "swr_master", strlen("swr_master")) != NULL) {
 			temp = krealloc(swr_ctrl_data,
 					(ctrl_num + 1) * sizeof(
 					struct tavil_swr_ctrl_data),

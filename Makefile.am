@@ -23,6 +23,9 @@ endif
 ifeq ($(TARGET_SUPPORT), sdxpinn))
 KBUILD_OPTIONS += CONFIG_ARCH_SDXPINN=y
 endif
+ifeq ($(TARGET_SUPPORT), sa525m))
+KBUILD_OPTIONS += CONFIG_ARCH_SA525M=y
+endif
 
 subdir-ccflags-y += -I$(AUDIO_ROOT)/include/uapi/
 

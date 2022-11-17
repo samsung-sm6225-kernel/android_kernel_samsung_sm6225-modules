@@ -341,7 +341,7 @@ static int adsp_loader_probe(struct platform_device *pdev)
 	rproc_phandle = be32_to_cpup(prop->value);
 	adsp = rproc_get_by_phandle(rproc_phandle);
 	if (!adsp) {
-		dev_err(&pdev->dev, "fail to get rproc\n", __func__);
+		dev_err(&pdev->dev, "%s: fail to get rproc\n", __func__);
 		return -EPROBE_DEFER;
 	}
 
@@ -405,7 +405,7 @@ static int adsp_loader_probe(struct platform_device *pdev)
 		goto wqueue;
 	}
 	if (len <= 0 || len > sizeof(u32)) {
-		dev_dbg(&pdev->dev, "%s: nvmem cell length out of range: %d\n",
+		dev_dbg(&pdev->dev, "%s: nvmem cell length out of range: %ld\n",
 			__func__, len);
 		kfree(buf);
 		goto wqueue;
