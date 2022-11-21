@@ -459,6 +459,60 @@ int audio_prm_set_cdc_earpa_duty_cycling_req(struct prm_earpa_hw_intf_config *ea
 }
 EXPORT_SYMBOL(audio_prm_set_cdc_earpa_duty_cycling_req);
 
+/**
+ * audio_prm_set_rsc_hw_csr_update - set the LPASS registers
+ *
+ * Return: 0 if reg passing is success.
+ */
+int audio_prm_set_rsc_hw_csr_update(uint32_t phy_addr, uint32_t bit_mask, uint32_t final_value)
+{
+	struct gpr_pkt *pkt;
+	prm_cmd_request_rsc_hw_csr_update_t prm_rsc_request_reg_info;
+	int ret = 0;
+	uint32_t size;
+
+	size = GPR_HDR_SIZE + sizeof(prm_cmd_request_rsc_hw_csr_update_t);
+	pkt = kzalloc(size,  GFP_KERNEL);
+	if (!pkt)
+		return -ENOMEM;
+	pkt->hdr.header = GPR_SET_FIELD(GPR_PKT_VERSION, GPR_PKT_VER) |
+			GPR_SET_FIELD(GPR_PKT_HEADER_SIZE, GPR_PKT_HEADER_WORD_SIZE_V) |
+			GPR_SET_FIELD(GPR_PKT_PACKET_SIZE, size);
+
+	pkt->hdr.src_port = GPR_SVC_ASM;
+	pkt->hdr.dst_port = PRM_MODULE_INSTANCE_ID;
+	pkt->hdr.dst_domain_id = GPR_IDS_DOMAIN_ID_ADSP_V;
+	pkt->hdr.src_domain_id = GPR_IDS_DOMAIN_ID_APPS_V;
+	pkt->hdr.token = 0;
+	pkt->hdr.opcode = PRM_CMD_REQUEST_HW_RSC;
+
+	memset(&prm_rsc_request_reg_info, 0, sizeof(prm_cmd_request_rsc_hw_csr_update_t));
+	prm_rsc_request_reg_info.payload_header.payload_address_lsw = 0;
+	prm_rsc_request_reg_info.payload_header.payload_address_msw = 0;
+	prm_rsc_request_reg_info.payload_header.mem_map_handle = 0;
+	prm_rsc_request_reg_info.payload_header.payload_size =
+			sizeof(prm_cmd_request_rsc_hw_csr_update_t) - sizeof(apm_cmd_header_t);
+
+	/* Populate the param payload */
+	prm_rsc_request_reg_info.module_payload_0.module_instance_id =
+							PRM_MODULE_INSTANCE_ID;
+	prm_rsc_request_reg_info.module_payload_0.error_code = 0;
+	prm_rsc_request_reg_info.module_payload_0.param_id =
+						PARAM_ID_RSC_HW_CSR_UPDATE;
+	prm_rsc_request_reg_info.module_payload_0.param_size =
+			sizeof(prm_cmd_request_rsc_hw_csr_update_t) -
+			sizeof(apm_cmd_header_t) - sizeof(apm_module_param_data_t);
+	prm_rsc_request_reg_info.csr_reg_info_t.phy_addr = phy_addr;
+	prm_rsc_request_reg_info.csr_reg_info_t.bit_mask = bit_mask;
+	prm_rsc_request_reg_info.csr_reg_info_t.final_value = final_value;
+
+	memcpy(&pkt->payload, &prm_rsc_request_reg_info, sizeof(prm_cmd_request_rsc_hw_csr_update_t));
+	ret = prm_gpr_send_pkt(pkt, &g_prm.wait);
+	kfree(pkt);
+	return ret;
+}
+EXPORT_SYMBOL(audio_prm_set_rsc_hw_csr_update);
+
 int audio_prm_set_vote_against_sleep(uint8_t enable)
 {
 	int ret = 0;

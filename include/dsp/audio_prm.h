@@ -262,6 +262,21 @@ struct prm_earpa_hw_intf_config {
 
 #define PARAM_ID_RSC_HW_CODEC_REG_INFO 0x0800131B
 
+typedef struct prm_cmd_hw_csr_update {
+	uint32_t phy_addr;
+	uint32_t bit_mask;
+	uint32_t final_value;
+} prm_cmd_hw_csr_update_t;
+
+typedef struct prm_cmd_request_rsc_hw_csr_update {
+	apm_cmd_header_t payload_header;
+	apm_module_param_data_t module_payload_0;
+	prm_cmd_hw_csr_update_t csr_reg_info_t;
+} prm_cmd_request_rsc_hw_csr_update_t;
+
+/* Param ID for HW CSR update */
+#define PARAM_ID_RSC_HW_CSR_UPDATE 0x0800131B
+
 #define HW_CODEC_DIG_REG_ID_MUTE_CTRL 0x1
 #define HW_CODEC_OP_DIG_MUTE_ENABLE 0x1
 #define HW_CODEC_OP_DIG_MUTE_DISABLE 0x2
@@ -607,6 +622,7 @@ int audio_prm_set_lpass_hw_core_req(struct clk_cfg *cfg, uint32_t hw_core_id, ui
 int audio_prm_set_lpass_core_clk_req(struct clk_cfg *cfg, uint32_t hw_core_id, uint8_t enable);
 int audio_prm_set_cdc_earpa_duty_cycling_req(struct prm_earpa_hw_intf_config *earpa_config,
 									uint32_t enable);
+int audio_prm_set_rsc_hw_csr_update(uint32_t phy_addr, uint32_t bit_mask, uint32_t final_value);
 void audio_prm_set_lpi_logging_status(int lpi_pcm_logging_enable);
 int audio_prm_set_vote_against_sleep(uint8_t enable);
 #endif
