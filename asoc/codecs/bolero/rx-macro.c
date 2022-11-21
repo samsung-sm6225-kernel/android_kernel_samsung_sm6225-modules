@@ -1090,6 +1090,7 @@ static int rx_macro_hw_params(struct snd_pcm_substream *substream,
 	int ret = 0;
 	struct device *rx_dev = NULL;
 	struct rx_macro_priv *rx_priv = NULL;
+	int mclk_freq = MCLK_FREQ;
 
 	if (!rx_macro_get_data(component, &rx_dev, &rx_priv, __func__))
 		return -EINVAL;
@@ -1106,6 +1107,14 @@ static int rx_macro_hw_params(struct snd_pcm_substream *substream,
 			pr_err("%s: cannot set sample rate: %u\n",
 				__func__, params_rate(params));
 			return ret;
+		}
+		if(rx_priv->is_native_on == true) {
+			mclk_freq = MCLK_FREQ_NATIVE;
+		}
+		if (rx_priv->swr_ctrl_data) {
+			swrm_wcd_notify(
+				rx_priv->swr_ctrl_data[0].rx_swr_pdev,
+				SWR_CLK_FREQ, &mclk_freq);
 		}
 		rx_priv->bit_width[dai->id] = params_width(params);
 		break;
