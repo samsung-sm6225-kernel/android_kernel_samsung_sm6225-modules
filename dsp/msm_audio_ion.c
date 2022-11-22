@@ -788,10 +788,16 @@ static int __audio_mem_hyp_assign(struct device *dev, int *source_vms,
 static int audio_mem_hyp_assign(struct device *dev)
 {
 	int source_vm_map[1] = {VMID_HLOS};
+#ifndef CONFIG_AUDIO_GPR_DOMAIN_MODEM
 	int dest_vm_map[4] = {VMID_MSS_MSA, VMID_LPASS, VMID_ADSP_HEAP, VMID_HLOS};
 	int dest_perms_map[4] = {
 		[0 ... 3] = PERM_READ | PERM_WRITE,
 	};
+#else
+	int dest_vm_map[2] = {VMID_MSS_MSA, VMID_HLOS};
+	int dest_perms_map[2] = {PERM_READ | PERM_WRITE,
+							PERM_READ | PERM_WRITE};
+#endif
 
 	return __audio_mem_hyp_assign(dev, source_vm_map,
 					   ARRAY_SIZE(source_vm_map),
@@ -801,7 +807,11 @@ static int audio_mem_hyp_assign(struct device *dev)
 
 static int audio_mem_hyp_unassign(struct device *dev)
 {
+#ifndef CONFIG_AUDIO_GPR_DOMAIN_MODEM
 	int source_vm_unmap[4] = {VMID_MSS_MSA, VMID_LPASS, VMID_ADSP_HEAP, VMID_HLOS};
+#else
+	int source_vm_unmap[2] = {VMID_MSS_MSA, VMID_HLOS};
+#endif
 	int dest_vm_unmap[1] = {VMID_HLOS};
 	int dest_perms_unmap[1] = {PERM_READ | PERM_WRITE | PERM_EXEC};
 
@@ -980,7 +990,11 @@ static int msm_audio_ion_probe(struct platform_device *pdev)
 		msm_audio_ion_data->smmu_sid_bits =
 			smmu_sid << MSM_AUDIO_SMMU_SID_OFFSET;
 	} else {
+#ifndef CONFIG_AUDIO_GPR_DOMAIN_MODEM
 		msm_audio_ion_data->driver_name = "msm_audio_ion_cma";
+#else
+		msm_audio_ion_data->driver_name = "msm_audio_ion";
+#endif
 	}
 
 	if (!rc)
