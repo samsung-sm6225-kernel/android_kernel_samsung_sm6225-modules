@@ -20,6 +20,7 @@
 #include <linux/of_device.h>
 #include <linux/export.h>
 #include <linux/ioctl.h>
+#include <linux/compat.h>
 #include <linux/cdev.h>
 #include <linux/fs.h>
 #include <linux/device.h>
@@ -679,6 +680,7 @@ static long msm_audio_ion_ioctl(struct file *file, unsigned int ioctl_num,
 	pr_debug("%s ioctl num %u ioctl_param %d\n", __func__, ioctl_num, ioctl_param);
 	switch (ioctl_num) {
 	case IOCTL_MAP_PHYS_ADDR:
+	case COMPAT_IOCTL_MAP_PHYS_ADDR:
 		dma_vmap = kzalloc(sizeof(struct msm_audio_fd_data), GFP_KERNEL);
 		if (!dma_vmap)
 			return -ENOMEM;
@@ -704,6 +706,7 @@ static long msm_audio_ion_ioctl(struct file *file, unsigned int ioctl_num,
 		msm_audio_update_fd_list(msm_audio_fd_data);
 		break;
 	case IOCTL_UNMAP_PHYS_ADDR:
+	case COMPAT_IOCTL_UNMAP_PHYS_ADDR:
 		msm_audio_get_handle((int)ioctl_param, &mem_handle);
 		ret = msm_audio_ion_free(mem_handle, ion_data);
 		if (ret < 0) {
@@ -755,6 +758,14 @@ static long msm_audio_ion_ioctl(struct file *file, unsigned int ioctl_num,
 		break;
 	}
 	return ret;
+}
+
+static long msm_audio_ion_compat_ioctl(struct file *file, unsigned int ioctl_num,
+                                 unsigned long __user ioctl_param)
+{
+	unsigned int ioctl_nr = _IOC_NR(ioctl_num);
+
+	return (long)msm_audio_ion_ioctl(file, ioctl_nr, ioctl_param);
 }
 
 static int __audio_mem_hyp_assign(struct device *dev, int *source_vms,
@@ -824,6 +835,7 @@ static const struct file_operations msm_audio_ion_fops = {
 	.open = msm_audio_ion_open,
 	.release = msm_audio_ion_release,
 	.unlocked_ioctl = msm_audio_ion_ioctl,
+	.compat_ioctl = msm_audio_ion_compat_ioctl,
 };
 
 static int msm_audio_ion_reg_chrdev(struct msm_audio_ion_private *ion_data)
