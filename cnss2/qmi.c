@@ -307,7 +307,8 @@ static int cnss_wlfw_host_cap_send_sync(struct cnss_plat_data *plat_priv)
 	req->cal_done = plat_priv->cal_done;
 	cnss_pr_dbg("Calibration done is %d\n", plat_priv->cal_done);
 
-	if (!cnss_bus_get_iova(plat_priv, &iova_start, &iova_size) &&
+	if (cnss_bus_is_smmu_s1_enabled(plat_priv) &&
+	    !cnss_bus_get_iova(plat_priv, &iova_start, &iova_size) &&
 	    !cnss_bus_get_iova_ipa(plat_priv, &iova_ipa_start,
 				   &iova_ipa_size)) {
 		req->ddr_range_valid = 1;
@@ -540,6 +541,7 @@ int cnss_wlfw_tgt_cap_send_sync(struct cnss_plat_data *plat_priv)
 		strlcpy(plat_priv->fw_build_id, resp->fw_build_id,
 			QMI_WLFW_MAX_BUILD_ID_LEN + 1);
 	}
+	/* FW will send aop retention volatage for qca6490 */
 	if (resp->voltage_mv_valid) {
 		plat_priv->cpr_info.voltage = resp->voltage_mv;
 		cnss_pr_dbg("Voltage for CPR: %dmV\n",
@@ -564,9 +566,11 @@ int cnss_wlfw_tgt_cap_send_sync(struct cnss_plat_data *plat_priv)
 				    plat_priv->dev_mem_info[i].size);
 		}
 	}
-	if (resp->fw_caps_valid)
+	if (resp->fw_caps_valid) {
 		plat_priv->fw_pcie_gen_switch =
 			!!(resp->fw_caps & QMI_WLFW_HOST_PCIE_GEN_SWITCH_V01);
+		plat_priv->fw_caps = resp->fw_caps;
+	}
 
 	if (resp->hang_data_length_valid &&
 	    resp->hang_data_length &&
