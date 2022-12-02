@@ -1078,7 +1078,6 @@ static int sde_rotator_init_queue(struct sde_rot_mgr *mgr)
 	if (!mgr->commitq)
 		return -ENOMEM;
 
-	kthread_init_work(&mgr->thread_priority_work, sde_rotator_thread_priority_worker);
 	for (i = 0; i < mgr->queue_count; i++) {
 		snprintf(name, sizeof(name), "rot_commitq_%d_%d",
 				mgr->device->id, i);
@@ -1091,8 +1090,9 @@ static int sde_rotator_init_queue(struct sde_rot_mgr *mgr)
 			mgr->commitq[i].rot_thread = NULL;
 			break;
 		}
-
+                kthread_init_work(&mgr->thread_priority_work, sde_rotator_thread_priority_worker);
 		kthread_queue_work(&mgr->commitq[i].rot_kw, &mgr->thread_priority_work);
+                kthread_flush_work(&mgr->thread_priority_work);
 		/* timeline not used */
 		mgr->commitq[i].timeline = NULL;
 	}
@@ -1114,8 +1114,9 @@ static int sde_rotator_init_queue(struct sde_rot_mgr *mgr)
 			mgr->doneq[i].rot_thread = NULL;
 			break;
 		}
-
+                kthread_init_work(&mgr->thread_priority_work, sde_rotator_thread_priority_worker);
 		kthread_queue_work(&mgr->doneq[i].rot_kw, &mgr->thread_priority_work);
+                kthread_flush_work(&mgr->thread_priority_work);
 		/* timeline not used */
 		mgr->doneq[i].timeline = NULL;
 	}
