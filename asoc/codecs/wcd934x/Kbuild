@@ -46,6 +46,11 @@ ifeq ($(KERNEL_BUILD), 0)
 		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/sdxpinnautoconf.h
 	endif
+	ifeq ($(CONFIG_ARCH_SDXBAAGHA), y)
+		include $(AUDIO_ROOT)/config/sdxbaaghaauto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdxbaaghaautoconf.h
+	endif
 endif
 
 # As per target team, build is done as follows:
