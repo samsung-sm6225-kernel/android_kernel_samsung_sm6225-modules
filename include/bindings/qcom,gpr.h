@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* Copyright (c) 2020-2021, The Linux Foundation. All rights reserved. */
+/* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.*/
 #ifndef __DT_BINDINGS_QCOM_GPR_H
 #define __DT_BINDINGS_QCOM_GPR_H
 
@@ -10,7 +11,8 @@
 #define GPR_DOMAIN_APPS		0x3
 #define GPR_DOMAIN_SDSP		0x4
 #define GPR_DOMAIN_CDSP		0x5
-#define GPR_DOMAIN_MAX		0x6
+#define GPR_DOMAIN_CC_DSP	0x6
+#define GPR_DOMAIN_MAX		0x7
 
 /* ADSP service IDs */
 #define GPR_SVC_ADSP_CORE	0x3
