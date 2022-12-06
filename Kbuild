@@ -146,39 +146,41 @@ ifeq ($(CONFIG_TOUCHSCREEN_SYNAPTICS_TCM), y)
 
 endif
 
-ifeq ($(CONFIG_TOUCHSCREEN_PARADE), y)
-	LINUX_INC += -include $(TOUCH_ROOT)/pt/pt_regs.h
-	LINUX_INC += -include $(TOUCH_ROOT)/pt/pt_core.h
-	LINUX_INC += -include $(TOUCH_ROOT)/pt/pt_platform.h
+ifneq ($(CONFIG_ARCH_PINEAPPLE), y)
+	ifeq ($(CONFIG_TOUCHSCREEN_PARADE), y)
+		LINUX_INC += -include $(TOUCH_ROOT)/pt/pt_regs.h
+		LINUX_INC += -include $(TOUCH_ROOT)/pt/pt_core.h
+		LINUX_INC += -include $(TOUCH_ROOT)/pt/pt_platform.h
 
-	pt_ts-y := \
-		./pt/pt_core.o \
-		./pt/pt_mt_common.o \
-		./pt/pt_platform.o \
-		./pt/pt_devtree.o \
-		./pt/pt_btn.o \
-		./pt/pt_mtb.o \
-		./pt/pt_proximity.o
+		pt_ts-y := \
+			./pt/pt_core.o \
+			./pt/pt_mt_common.o \
+			./pt/pt_platform.o \
+			./pt/pt_devtree.o \
+			./pt/pt_btn.o \
+			./pt/pt_mtb.o \
+			./pt/pt_proximity.o
 
-	obj-$(CONFIG_MSM_TOUCH) += pt_ts.o
-endif
+		obj-$(CONFIG_MSM_TOUCH) += pt_ts.o
+	endif
 
-ifeq ($(CONFIG_TOUCHSCREEN_PARADE_I2C), y)
-	LINUX_INC += -include $(TOUCH_ROOT)/pt/pt_regs.h
+	ifeq ($(CONFIG_TOUCHSCREEN_PARADE_I2C), y)
+		LINUX_INC += -include $(TOUCH_ROOT)/pt/pt_regs.h
 
-	pt_i2c-y := \
-		./pt/pt_i2c.o
+		pt_i2c-y := \
+			./pt/pt_i2c.o
 
-	obj-$(CONFIG_MSM_TOUCH) += pt_i2c.o
-endif
+		obj-$(CONFIG_MSM_TOUCH) += pt_i2c.o
+	endif
 
-ifeq ($(CONFIG_TOUCHSCREEN_PARADE_DEVICE_ACCESS), y)
-	LINUX_INC += -include $(TOUCH_ROOT)/pt/pt_regs.h
+	ifeq ($(CONFIG_TOUCHSCREEN_PARADE_DEVICE_ACCESS), y)
+		LINUX_INC += -include $(TOUCH_ROOT)/pt/pt_regs.h
 
-	pt_device_access-y := \
-		./pt/pt_device_access.o
+		pt_device_access-y := \
+			./pt/pt_device_access.o
 
-	obj-$(CONFIG_MSM_TOUCH) += pt_device_access.o
-endif
+		obj-$(CONFIG_MSM_TOUCH) += pt_device_access.o
+	endif
+endif # pineapple
 
 CDEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"
