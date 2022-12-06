@@ -22,4 +22,4 @@ Copyright (c) 2020, The Linux Foundation. All rights reserved.
 #define CONFIG_SND_SOC_QDSP6V2 1
 #define CONFIG_SND_SOC_MSM_STUB 1
 #define CONFIG_SND_EVENT 1
-#define CONFIG_MSM_CDC_PIN_CTRL 1
+#define CONFIG_WCD9XXX_CODEC_CORE_V2 1
