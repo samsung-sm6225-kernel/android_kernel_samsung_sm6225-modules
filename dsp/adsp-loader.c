@@ -73,10 +73,6 @@ static void adsp_load_fw(struct work_struct *adsp_ldr_work)
 	const char *adsp_dt = "qcom,adsp-state";
 	int rc = 0;
 	u32 adsp_state;
-	struct property *prop;
-	int size;
-	phandle rproc_phandle;
-	struct rproc *rproc;
 
 	if (!pdev) {
 		dev_err(&pdev->dev, "%s: Platform device null\n", __func__);
@@ -103,39 +99,6 @@ static void adsp_load_fw(struct work_struct *adsp_ldr_work)
 		goto fail;
 	}
 
-	prop = of_find_property(pdev->dev.of_node, "qcom,proc-img-to-load",
-					&size);
-	if (!prop) {
-		dev_dbg(&pdev->dev,
-			"%s: loading default image ADSP\n", __func__);
-		goto load_adsp;
-	}
-
-	rproc_phandle = be32_to_cpup(prop->value);
-	priv->pil_h = rproc_get_by_phandle(rproc_phandle);
-	if (!priv->pil_h)
-		goto fail;
-
-	rproc = priv->pil_h;
-	if (!strcmp(rproc->name, "modem")) {
-		if (adsp_state == SPF_SUBSYS_DOWN) {
-			rc = rproc_boot(priv->pil_h);
-			if (IS_ERR(priv->pil_h) || rc) {
-				dev_err(&pdev->dev, "%s: pil get failed,\n",
-					__func__);
-				goto fail;
-			}
-
-		} else if (adsp_state == SPF_SUBSYS_LOADED) {
-			dev_dbg(&pdev->dev,
-			"%s: MDSP state = %x\n", __func__, adsp_state);
-		}
-
-		dev_dbg(&pdev->dev, "%s: Q6/MDSP image is loaded\n", __func__);
-		return;
-	}
-
-load_adsp:
 	{
 		adsp_state = spf_core_is_apm_ready();
 		if (adsp_state == SPF_SUBSYS_DOWN) {
