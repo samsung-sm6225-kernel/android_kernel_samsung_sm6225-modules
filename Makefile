@@ -1,4 +1,4 @@
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sdxpinn))
+ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sdxpinn sdxbaagha))
 
 AUDIO_ROOT=$(KERNEL_SRC)/$(M)
 UAPI_OUT=$(KERNEL_SRC)/$(M)
@@ -14,6 +14,10 @@ AUDIO_KERNEL_HEADERS_PATH3 =  $(shell ls ./include/uapi/audio/sound/*.h)
 
 ifeq ($(TARGET_SUPPORT), sdxpinn)
 KBUILD_OPTIONS += CONFIG_ARCH_SDXPINN=y
+endif
+
+ifeq ($(TARGET_SUPPORT), sdxbaagha)
+KBUILD_OPTIONS += CONFIG_ARCH_SDXBAAGHA=y
 endif
 
 subdir-ccflags-y += -I$(AUDIO_ROOT)/include/uapi/

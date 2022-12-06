@@ -182,11 +182,13 @@ int of_register_swr_devices(struct swr_master *master)
 		}
 		info.addr = addr;
 		info.of_node = of_node_get(node);
+		master->num_dev++;
 		swr = swr_new_device(master, &info);
 		if (!swr) {
 			dev_err_ratelimited(&master->dev, "of_swr: Register failed %s\n",
 				node->full_name);
 			of_node_put(node);
+			master->num_dev--;
 			continue;
 		}
 	}
