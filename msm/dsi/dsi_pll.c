@@ -75,6 +75,11 @@ static void dsi_pll_parse_dfps(struct platform_device *pdev,
 	u64 size;
 	u32 offsets[2];
 
+	if (pll_res->dfps != NULL) {
+		DSI_PLL_INFO(pll_res, "dfps info already populated");
+		return;
+	}
+
 	pnode = of_parse_phandle(pdev->dev.of_node, "memory-region", 0);
 	if (IS_ERR_OR_NULL(pnode)) {
 		DSI_PLL_INFO(pll_res, "of_parse_phandle failed\n");
