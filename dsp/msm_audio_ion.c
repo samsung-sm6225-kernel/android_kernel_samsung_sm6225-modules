@@ -81,7 +81,7 @@ struct msm_audio_fd_data {
 	int fd;
 	size_t plen;
 	void *handle;
-	dma_addr_t paddr;
+	u64 paddr;
 	struct device *dev;
 	struct list_head list;
 	bool hyp_assign;
@@ -269,17 +269,19 @@ static int msm_audio_dma_buf_unmap(struct dma_buf *dma_buf, struct msm_audio_ion
 }
 
 static int msm_audio_ion_get_phys(struct dma_buf *dma_buf,
-				  dma_addr_t *addr, size_t *len, bool is_iova,
+				  u64 *addr, size_t *len, bool is_iova,
 				  struct msm_audio_ion_private *ion_data)
 {
 	int rc = 0;
+	dma_addr_t paddr;
 
-	rc = msm_audio_dma_buf_map(dma_buf, addr, len, is_iova, ion_data);
+	rc = msm_audio_dma_buf_map(dma_buf, &paddr, len, is_iova, ion_data);
 	if (rc) {
 		pr_err("%s: failed to map DMA buf, err = %d\n",
 			__func__, rc);
 		goto err;
 	}
+	*addr = paddr;
 	if (ion_data->smmu_enabled && is_iova) {
 		/* Append the SMMU SID information to the IOVA address */
 		*addr |= ion_data->smmu_sid_bits;
@@ -332,7 +334,7 @@ err:
 	return rc;
 }
 
-static int msm_audio_ion_map_buf(struct dma_buf *dma_buf, dma_addr_t *paddr,
+static int msm_audio_ion_map_buf(struct dma_buf *dma_buf, u64 *paddr,
 				 size_t *plen, struct dma_buf_map *dma_vmap,
 				 struct msm_audio_ion_private *ion_data)
 {
@@ -416,7 +418,7 @@ void msm_audio_delete_fd_entry(void *handle)
 	mutex_unlock(&(msm_audio_ion_fd_list.list_mutex));
 }
 
-int msm_audio_get_phy_addr(int fd, dma_addr_t *paddr, size_t *pa_len)
+int msm_audio_get_phy_addr(int fd, u64 *paddr, size_t *pa_len)
 {
 	struct msm_audio_fd_data *msm_audio_fd_data = NULL;
 	int status = -EINVAL;
@@ -497,10 +499,11 @@ void msm_audio_get_handle(int fd, void **handle)
  */
 static int msm_audio_ion_import(struct dma_buf **dma_buf, int fd,
 			unsigned long *ionflag, size_t bufsz,
-			dma_addr_t *paddr, size_t *plen, struct dma_buf_map *dma_vmap,
+			u64 *paddr, size_t *plen, struct dma_buf_map *dma_vmap,
 			struct msm_audio_ion_private *ion_data)
 {
 	int rc = 0;
+	dma_addr_t addr;
 
 	if (!(ion_data->device_status & MSM_AUDIO_ION_PROBED)) {
 		pr_debug("%s: probe is not done, deferred\n", __func__);
@@ -538,7 +541,8 @@ static int msm_audio_ion_import(struct dma_buf **dma_buf, int fd,
 		pr_debug("%s: mapped address = %pK, size=%zd\n", __func__,
 				dma_vmap->vaddr, bufsz);
 	} else {
-		msm_audio_dma_buf_map(*dma_buf, paddr, plen, true, ion_data);
+		msm_audio_dma_buf_map(*dma_buf, &addr, plen, true, ion_data);
+		*paddr = addr;
 	}
 	return 0;
 
@@ -661,7 +665,7 @@ static long msm_audio_ion_ioctl(struct file *file, unsigned int ioctl_num,
 				unsigned long __user ioctl_param)
 {
 	void *mem_handle;
-	dma_addr_t paddr;
+	u64 paddr;
 	size_t pa_len = 0;
 	struct dma_buf_map *dma_vmap = NULL;
 	int ret = 0;

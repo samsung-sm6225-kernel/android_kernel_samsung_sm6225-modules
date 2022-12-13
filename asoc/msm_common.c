@@ -30,9 +30,6 @@ struct snd_card_pdata {
 #define to_asoc_mach_common_pdata(kobj) \
 	container_of((kobj), struct msm_common_pdata, aud_dev_kobj)
 
-#define DEVICE_ENABLE 1
-#define DEVICE_DISABLE 0
-
 #define ARRAY_SZ 21
 #define BUF_SZ 32
 #define DIR_SZ 10

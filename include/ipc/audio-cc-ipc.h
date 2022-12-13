@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
@@ -12,6 +12,11 @@
 
 #define AUDIO_CC_IPC_READ_SIZE_MAX (4 * 1024)
 #define AUDIO_CC_IPC_WRITE_SIZE_MAX (256 * 1024)
+
+enum audio_cc_subsys_state {
+	AUDIO_CC_SUBSYS_DOWN,
+	AUDIO_CC_SUBSYS_UP,
+};
 
 /* Function signature of read buffer callback funtion to client */
 typedef void (*audio_cc_ipc_cb_t)(void *data, size_t len);

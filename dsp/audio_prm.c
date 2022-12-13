@@ -172,19 +172,28 @@ int audio_prm_set_lpass_hw_core_req(struct clk_cfg *cfg, uint32_t hw_core_id, ui
 		pkt->hdr.opcode = PRM_CMD_RELEASE_HW_RSC;
 
         //pr_err("%s: clk_id %d size of cmd_req %ld \n",__func__, cfg->clk_id, sizeof(prm_cmd_request_hw_core_t));
-
+	memset(&prm_rsc_request, 0, sizeof(prm_rsc_request));
         prm_rsc_request.payload_header.payload_address_lsw = 0;
         prm_rsc_request.payload_header.payload_address_msw = 0;
         prm_rsc_request.payload_header.mem_map_handle = 0;
-        prm_rsc_request.payload_header.payload_size = sizeof(prm_cmd_request_hw_core_t) - sizeof(apm_cmd_header_t);
+        prm_rsc_request.payload_header.payload_size =
+		sizeof(prm_cmd_request_hw_core_t) - sizeof(apm_module_param_data_t) - sizeof(apm_cmd_header_t);
 
         /** Populate the param payload */
         prm_rsc_request.module_payload_0.module_instance_id = PRM_MODULE_INSTANCE_ID;
         prm_rsc_request.module_payload_0.error_code = 0;
         prm_rsc_request.module_payload_0.param_id = PARAM_ID_RSC_HW_CORE;
         prm_rsc_request.module_payload_0.param_size =
-                sizeof(prm_cmd_request_hw_core_t) - sizeof(apm_cmd_header_t) - sizeof(apm_module_param_data_t);
+        sizeof(prm_cmd_request_hw_core_t) - sizeof(apm_cmd_header_t) - (2* sizeof(apm_module_param_data_t));
 
+	if (hw_core_id == HW_CORE_ID_DCODEC) {
+		/** Populate the param payload */
+		prm_rsc_request.module_payload_1.module_instance_id = PRM_MODULE_INSTANCE_ID;
+		prm_rsc_request.module_payload_1.error_code = 0;
+		prm_rsc_request.module_payload_1.param_id = PARAM_ID_RSC_VOTE_AGAINST_ISLAND;
+		prm_rsc_request.module_payload_1.param_size = 0;
+		prm_rsc_request.payload_header.payload_size += sizeof(apm_module_param_data_t);
+	}
 
         prm_rsc_request.hw_core_id = hw_core_id; // HW_CORE_ID_LPASS;
 
@@ -521,6 +530,67 @@ int audio_prm_set_lpass_clk_cfg (struct clk_cfg *clk, uint8_t enable)
 	return ret;
 }
 EXPORT_SYMBOL(audio_prm_set_lpass_clk_cfg);
+
+/**
+* audio_prm_set_slimbus_clock_src -
+* request slimbus clock source to SPF PRM instance
+*
+* @clock: requested clock source value
+* @slimbus_dev_id: slimbus device id to request clock for
+*
+* Returns 0 on success or error on failure
+*/
+int audio_prm_set_slimbus_clock_src(uint32_t clock, uint32_t slimbus_dev_id)
+{
+	struct gpr_pkt *pkt = NULL;
+	prm_cmd_request_sb_clk_t prm_rsc_request;
+	int ret = 0;
+	uint32_t size = 0;
+
+	size = GPR_HDR_SIZE + sizeof(prm_cmd_request_sb_clk_t);
+	pkt = kzalloc(size,  GFP_KERNEL);
+	if (!pkt)
+		return -ENOMEM;
+
+	pkt->hdr.header = GPR_SET_FIELD(GPR_PKT_VERSION, GPR_PKT_VER) |
+			  GPR_SET_FIELD(GPR_PKT_HEADER_SIZE, GPR_PKT_HEADER_WORD_SIZE_V) |
+			  GPR_SET_FIELD(GPR_PKT_PACKET_SIZE, size);
+
+	pkt->hdr.src_port = GPR_SVC_ASM;
+	pkt->hdr.dst_port = PRM_MODULE_INSTANCE_ID;
+	pkt->hdr.dst_domain_id = GPR_IDS_DOMAIN_ID_ADSP_V;
+	pkt->hdr.src_domain_id = GPR_IDS_DOMAIN_ID_APPS_V;
+	pkt->hdr.token = 0;
+	pkt->hdr.opcode = PRM_CMD_REQUEST_HW_RSC;
+
+	memset(&prm_rsc_request, 0, sizeof(prm_rsc_request));
+	prm_rsc_request.payload_header.payload_address_lsw = 0;
+	prm_rsc_request.payload_header.payload_address_msw = 0;
+	prm_rsc_request.payload_header.mem_map_handle = 0;
+	prm_rsc_request.payload_header.payload_size =
+		sizeof(prm_cmd_request_sb_clk_t)
+		- sizeof(apm_cmd_header_t);
+
+	/** Populate the param payload */
+	prm_rsc_request.module_payload_0.module_instance_id = PRM_MODULE_INSTANCE_ID;
+	prm_rsc_request.module_payload_0.error_code = 0;
+	prm_rsc_request.module_payload_0.param_id = PARAM_ID_RSC_SLIMBUS_CLOCK_SOURCE;
+	prm_rsc_request.module_payload_0.param_size =
+		sizeof(prm_cmd_request_sb_clk_t)
+		- sizeof(apm_cmd_header_t)
+		- sizeof(apm_module_param_data_t);
+
+	/** Populate the param payload */
+	prm_rsc_request.sb_clk_rsc.clock_src = clock;
+	prm_rsc_request.sb_clk_rsc.slimbus_dev_id = slimbus_dev_id;
+	memcpy(&pkt->payload, &prm_rsc_request, sizeof(prm_cmd_request_sb_clk_t));
+
+	ret = prm_gpr_send_pkt(pkt, &g_prm.wait);
+
+	kfree(pkt);
+	return ret;
+}
+EXPORT_SYMBOL(audio_prm_set_slimbus_clock_src);
 
 static int audio_prm_service_cb(struct notifier_block *this,
 				unsigned long opcode, void *data)

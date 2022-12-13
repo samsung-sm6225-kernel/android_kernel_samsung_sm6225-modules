@@ -307,7 +307,7 @@ int audpkt_chk_and_update_physical_addr(struct audio_gpr_pkt *gpr_pkt)
 {
 	int ret = 0;
         size_t pa_len = 0;
-	dma_addr_t paddr;
+	u64 paddr;
 
 	if (gpr_pkt->audpkt_mem_map.mmap_header.property_flag &
 				APM_MEMORY_MAP_BIT_MASK_IS_OFFSET_MODE) {
@@ -321,8 +321,9 @@ int audpkt_chk_and_update_physical_addr(struct audio_gpr_pkt *gpr_pkt)
 		}
 		AUDIO_PKT_INFO("%s physical address %pK", __func__,
 				(void *) paddr);
-		gpr_pkt->audpkt_mem_map.mmap_payload.shm_addr_lsw = (uint32_t) paddr;
-		gpr_pkt->audpkt_mem_map.mmap_payload.shm_addr_msw = (uint64_t) paddr >> 32;
+		gpr_pkt->audpkt_mem_map.mmap_payload.shm_addr_lsw = (u32) paddr;
+		gpr_pkt->audpkt_mem_map.mmap_payload.shm_addr_msw = (u32) (paddr >> 32);
+
 	}
 	return ret;
 }
