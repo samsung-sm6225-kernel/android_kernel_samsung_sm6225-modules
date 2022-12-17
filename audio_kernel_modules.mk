@@ -109,5 +109,20 @@ endif	#wear_aon
 endif	#monaco
 
 endif
+else
+ifeq ($(call is-board-platform-in-list,msmnile), true)
+AUDIO_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/q6_notifier_dlkm.ko\
+        $(KERNEL_MODULES_OUT)/spf_core_dlkm.ko \
+        $(KERNEL_MODULES_OUT)/audpkt_ion_dlkm.ko \
+        $(KERNEL_MODULES_OUT)/gpr_dlkm.ko \
+        $(KERNEL_MODULES_OUT)/audio_pkt_dlkm.ko \
+        $(KERNEL_MODULES_OUT)/q6_dlkm.ko \
+        $(KERNEL_MODULES_OUT)/adsp_loader_dlkm.ko \
+        $(KERNEL_MODULES_OUT)/audio_prm_dlkm.ko \
+        $(KERNEL_MODULES_OUT)/snd_event_dlkm.ko \
+        $(KERNEL_MODULES_OUT)/stub_dlkm.ko \
+        $(KERNEL_MODULES_OUT)/machine_dlkm.ko \
+        $(KERNEL_MODULES_OUT)/q6_pdr_dlkm.ko
+endif   #msmnile
 endif
 endif
