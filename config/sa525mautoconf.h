@@ -11,6 +11,7 @@ Copyright (c) 2020, The Linux Foundation. All rights reserved.
 #define CONFIG_AUDIO_PKT_ION 1
 #define CONFIG_SPF_CORE 1
 #define CONFIG_AUDIO_PRM 1
+#define CONFIG_AUDIO_GPR_DOMAIN_MODEM 1
 #define CONFIG_SND_SOC_MSM_QDSP6V2_INTF 1
 #define CONFIG_MSM_ADSP_LOADER 1
 #define CONFIG_MSM_QDSP6_SSR 1
@@ -22,4 +23,4 @@ Copyright (c) 2020, The Linux Foundation. All rights reserved.
 #define CONFIG_SND_SOC_QDSP6V2 1
 #define CONFIG_SND_SOC_MSM_STUB 1
 #define CONFIG_SND_EVENT 1
-#define CONFIG_MSM_CDC_PIN_CTRL 1
+#define CONFIG_WCD9XXX_CODEC_CORE_V2 1

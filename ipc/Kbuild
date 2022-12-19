@@ -71,6 +71,10 @@ ifeq ($(KERNEL_BUILD), 0)
 		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/bengalautoconf.h
 	endif
+	ifeq ($(CONFIG_ARCH_MONACO), y)
+		include $(AUDIO_ROOT)/config/monacoauto.conf
+		INCS    +=  -include $(AUDIO_ROOT)/config/monacoautoconf.h
+	endif
 	ifeq ($(CONFIG_ARCH_SM8150), y)
 		ifdef CONFIG_SND_SOC_SA8155
 			include $(AUDIO_ROOT)/config/sa8155auto.conf
@@ -113,6 +117,11 @@ ifeq ($(KERNEL_BUILD), 0)
 		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/sdxpinnautoconf.h
 	endif
+	ifeq ($(CONFIG_ARCH_SDXBAAGHA), y)
+		include $(AUDIO_ROOT)/config/sdxbaaghaauto.conf
+		export
+		INCS    +=  -include $(AUDIO_ROOT)/config/sdxbaaghaautoconf.h
+	endif
 endif
 endif
 
@@ -148,6 +157,10 @@ endif
 
 ifdef CONFIG_AUDIO_PKT
 AUDIO_PKT += audio-pkt.o
+endif
+
+ifdef CONFIG_AUDIO_CC_IPC
+AUDIO_CC_IPC += audio-cc-ipc.o
 endif
 
 LINUX_INC += -Iinclude/linux
@@ -204,6 +217,9 @@ gpr_dlkm-y := $(GPRV_GLINK)
 
 obj-$(CONFIG_AUDIO_PKT) += audio_pkt_dlkm.o
 audio_pkt_dlkm-y := $(AUDIO_PKT)
+
+obj-$(CONFIG_AUDIO_CC_IPC) += audio_cc_ipc_dlkm.o
+audio_cc_ipc_dlkm-y := $(AUDIO_CC_IPC)
 
 # inject some build related information
 CDEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

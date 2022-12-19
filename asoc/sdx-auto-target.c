@@ -43,7 +43,7 @@
 #define WCD_MBHC_HS_V_MAX           1600
 
 #define MSM_LL_QOS_VALUE	300 /* time in us to ensure LPM doesn't go in C3/C4 */
-
+#define TLV_CLKIN_MCLK 0
 
 #define WCN_CDC_SLIM_RX_CH_MAX 2
 #define WCN_CDC_SLIM_TX_CH_MAX 2
@@ -52,8 +52,10 @@
 #define LPAIF_OFFSET 0x01a00000
 #define LPAIF_PRI_MODE_MUXSEL (LPAIF_OFFSET + 0x2008)
 #define LPAIF_SEC_MODE_MUXSEL (LPAIF_OFFSET + 0x200c)
+#define LPAIF_TERTIARY_MODE_MUXSEL (LPAIF_OFFSET + 0x2010)
 #define LPASS_CSR_GP_IO_MUX_SPKR_CTL (LPAIF_OFFSET + 0x2004)
 #define LPASS_CSR_GP_IO_MUX_MIC_CTL  (LPAIF_OFFSET + 0x2000)
+#define LPASS_CSR_GP_IO_MUX_TER_CTL (LPAIF_OFFSET + 0x2014)
 
 #define I2S_SEL 0
 #define PCM_SEL 1
@@ -63,10 +65,15 @@
 
 #define PRI_TLMM_CLKS_EN_MASTER 0x4
 #define SEC_TLMM_CLKS_EN_MASTER 0x2
+#define TERT_TLMM_CLKS_EN_MASTER 0x1
 #define PRI_TLMM_CLKS_EN_SLAVE 0x100000
 #define SEC_TLMM_CLKS_EN_SLAVE 0x800000
+#define TERT_TLMM_CLKS_EN_SLAVE 0x2
 #define CLOCK_ON  1
 #define CLOCK_OFF 0
+
+
+#define SDX_MCLK_CLK_12P288MHZ 12288000
 
 struct msm_asoc_mach_data {
 	struct snd_info_entry *codec_root;
@@ -85,16 +92,22 @@ struct msm_asoc_mach_data {
 	int core_audio_vote_count;
 	u32 wsa_max_devs;
 	u16 prim_mi2s_mode;
+	u16 tert_mi2s_mode;
 	struct device_node *prim_master_p;
+	struct device_node *tert_master_p;
 	void __iomem *lpaif_pri_muxsel_virt_addr;
 	void __iomem *lpaif_sec_muxsel_virt_addr;
+	void __iomem *lpaif_tert_muxsel_virt_addr;
 	void __iomem *lpass_mux_spkr_ctl_virt_addr;
+	void __iomem *lpass_tert_mux_spkr_ctl_virt_addr;
 	void __iomem *lpass_mux_mic_ctl_virt_addr;
 };
 
 static bool is_initial_boot;
 static atomic_t mi2s_ref_count;
+static atomic_t tert_mi2s_ref_count;
 static int sdx_mi2s_mode = I2S_PCM_MASTER_MODE;
+static int sdx_tert_mi2s_mode = I2S_PCM_MASTER_MODE;
 static struct snd_soc_card snd_soc_card_sdx_msm;
 
 static int msm_aux_codec_init(struct snd_soc_pcm_runtime*);
@@ -118,11 +131,21 @@ static void sdx_mi2s_shutdown(struct snd_pcm_substream *substream)
 
 	if (atomic_dec_return(&mi2s_ref_count) == 0) {
 		if (pdata->prim_mi2s_mode == 1) {
+			struct clk_cfg intf_clk_cfg;
 			ret = msm_cdc_pinctrl_select_sleep_state
 						(pdata->prim_master_p);
 			if (ret)
 				pr_err("%s: failed to set pri gpios to sleep: %d\n",
 			       __func__, ret);
+
+			intf_clk_cfg.clk_id = CLOCK_ID_MCLK_3 ;
+			intf_clk_cfg.clk_freq_in_hz = SDX_MCLK_CLK_12P288MHZ;
+			intf_clk_cfg.clk_attri = CLOCK_ATTRIBUTE_COUPLE_NO;
+			intf_clk_cfg.clk_root = 0;
+			ret = audio_prm_set_lpass_clk_cfg(&intf_clk_cfg, 0);
+			if (ret < 0) {
+				pr_err("%s set lpass clk set failed\n", __func__);
+			}
 		}
 	}
 }
@@ -176,10 +199,21 @@ static int sdx_mi2s_startup(struct snd_pcm_substream *substream)
 		 * 0 means external clock slave mode.
 		 */
 		if (pdata->prim_mi2s_mode == 1) {
+			struct clk_cfg intf_clk_cfg;
+
 			ret = msm_cdc_pinctrl_select_active_state
 					(pdata->prim_master_p);
 			if (ret < 0) {
 				pr_err("%s pinctrl set failed\n", __func__);
+				goto done;
+			}
+			intf_clk_cfg.clk_id = CLOCK_ID_MCLK_3 ;
+			intf_clk_cfg.clk_freq_in_hz = SDX_MCLK_CLK_12P288MHZ;
+			intf_clk_cfg.clk_attri = CLOCK_ATTRIBUTE_COUPLE_NO;
+			intf_clk_cfg.clk_root = 0;
+			ret = audio_prm_set_lpass_clk_cfg(&intf_clk_cfg, 1);
+			if (ret < 0) {
+				pr_err("%s set lpass clk set failed\n", __func__);
 				goto done;
 			}
 			ret = snd_soc_dai_set_fmt(codec_dai,
@@ -190,6 +224,15 @@ static int sdx_mi2s_startup(struct snd_pcm_substream *substream)
 					"%s Set fmt for codec dai failed\n",
 					__func__);
 				//Disable mlck here
+			}
+
+			ret = snd_soc_dai_set_sysclk(codec_dai,
+					TLV_CLKIN_MCLK,
+					SDX_MCLK_CLK_12P288MHZ,
+					SND_SOC_CLOCK_OUT);
+			if (ret < 0) {
+				pr_err("%s Set sysclk for codec dai failed 0x%8x\n",
+					__func__, ret);
 			}
 		} else {
 			/*
@@ -211,6 +254,135 @@ static struct snd_soc_ops sdx_mi2s_be_ops = {
 	.shutdown = sdx_mi2s_shutdown,
 };
 
+static void sdx_tert_mi2s_shutdown(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	int ret;
+	struct snd_soc_card *card = rtd->card;
+	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+
+	if (atomic_dec_return(&tert_mi2s_ref_count) == 0) {
+		if (pdata->tert_mi2s_mode == 1) {
+			struct clk_cfg intf_clk_cfg;
+
+			ret = msm_cdc_pinctrl_select_sleep_state
+						(pdata->tert_master_p);
+			if (ret)
+				pr_err("%s: failed to set tert gpios to sleep: %d\n",
+			       __func__, ret);
+			intf_clk_cfg.clk_id = CLOCK_ID_MCLK_3 ;
+			intf_clk_cfg.clk_freq_in_hz = SDX_MCLK_CLK_12P288MHZ;
+			intf_clk_cfg.clk_attri = CLOCK_ATTRIBUTE_COUPLE_NO;
+			intf_clk_cfg.clk_root = 0;
+			ret = audio_prm_set_lpass_clk_cfg(&intf_clk_cfg, 0);
+			if (ret < 0) {
+				pr_err("%s set lpass clk set failed\n", __func__);
+			}
+		}
+	}
+}
+
+static int sdx_tert_mi2s_startup(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_dai *codec_dai = asoc_rtd_to_codec(rtd, 0);
+	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	int ret = 0;
+
+	pdata->tert_mi2s_mode = sdx_tert_mi2s_mode;
+	if (atomic_inc_return(&tert_mi2s_ref_count) == 1) {
+		if (pdata->lpaif_tert_muxsel_virt_addr != NULL) {
+
+			ret = audio_prm_set_lpass_core_clk_req( NULL, 1, 1);
+			if (ret < 0) {
+				dev_err(card->dev,
+				"%s:set lpass core clk failed ret: %d\n",
+				__func__, ret);
+				ret = -EINVAL;
+				goto done;
+			}
+
+			iowrite32(I2S_SEL << I2S_PCM_SEL_OFFSET,
+				  pdata->lpaif_tert_muxsel_virt_addr);
+			if (pdata->lpass_tert_mux_spkr_ctl_virt_addr != NULL) {
+				if (pdata->tert_mi2s_mode == 1)
+					iowrite32(TERT_TLMM_CLKS_EN_MASTER,
+					pdata->lpass_tert_mux_spkr_ctl_virt_addr);
+				else
+					iowrite32(TERT_TLMM_CLKS_EN_SLAVE,
+					pdata->lpass_tert_mux_spkr_ctl_virt_addr);
+			} else {
+				dev_err(card->dev, "%s: mux spkr ctl virt addr is NULL\n",
+					__func__);
+
+				ret = -EINVAL;
+				goto done;
+			}
+		} else {
+			dev_err(card->dev, "%s lpaif_tert_muxsel_virt_addr is NULL\n",
+				__func__);
+			ret = -EINVAL;
+			goto done;
+		}
+		/*
+		 * This sets the CONFIG PARAMETER WS_SRC.
+		 * 1 means internal clock master mode.
+		 * 0 means external clock slave mode.
+		 */
+		if (pdata->tert_mi2s_mode == 1) {
+			struct clk_cfg intf_clk_cfg;
+
+			ret = msm_cdc_pinctrl_select_active_state
+					(pdata->tert_master_p);
+			if (ret < 0) {
+				pr_err("%s pinctrl set failed\n", __func__);
+				goto done;
+			}
+			intf_clk_cfg.clk_id = CLOCK_ID_MCLK_3 ;
+			intf_clk_cfg.clk_freq_in_hz = SDX_MCLK_CLK_12P288MHZ;
+			intf_clk_cfg.clk_attri = CLOCK_ATTRIBUTE_COUPLE_NO;
+			intf_clk_cfg.clk_root = 0;
+			ret = audio_prm_set_lpass_clk_cfg(&intf_clk_cfg, 1);
+			if (ret < 0) {
+				pr_err("%s set lpass clk set failed\n", __func__);
+				goto done;
+			}
+
+			ret = snd_soc_dai_set_fmt(codec_dai,
+						SND_SOC_DAIFMT_CBS_CFS |
+						SND_SOC_DAIFMT_I2S);
+			if (ret < 0) {
+				dev_err(card->dev,
+					"%s Set fmt for codec dai failed\n",
+					__func__);
+				//Disable mlck here
+
+			ret = audio_prm_set_lpass_clk_cfg(&intf_clk_cfg, 0);
+			if (ret < 0) {
+				pr_err("%s set lpass clk set failed\n", __func__);
+				goto done;
+			}
+			}
+		} else {
+			/*
+			 * Disable bit clk in slave mode for QC codec.
+			 * Enable only mclk.
+			 */
+		}
+		audio_prm_set_lpass_core_clk_req( NULL, 1, 0);
+	}
+
+done:
+	if (ret)
+		atomic_dec_return(&tert_mi2s_ref_count);
+	return ret;
+}
+
+static struct snd_soc_ops sdx_tert_mi2s_be_ops = {
+	.startup = sdx_tert_mi2s_startup,
+	.shutdown = sdx_tert_mi2s_shutdown,
+};
 
 static struct snd_info_entry *msm_snd_info_create_subdir(struct module *mod,
 				const char *name,
@@ -300,6 +472,29 @@ static struct snd_soc_dai_link msm_rx_tx_cdc_dma_be_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		.ignore_suspend = 1,
 		.ops = &sdx_mi2s_be_ops,
+		SND_SOC_DAILINK_REG(tlv320aic3x_codec),
+	},
+	{
+		.name = LPASS_BE_TERT_MI2S_RX,
+		.stream_name = LPASS_BE_TERT_MI2S_RX,
+		.playback_only = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+		.ops = &sdx_tert_mi2s_be_ops,
+		SND_SOC_DAILINK_REG(tlv320aic3x_codec),
+		.init = &msm_aux_codec_init,
+	},
+	{
+		.name = LPASS_BE_TERT_MI2S_TX,
+		.stream_name = LPASS_BE_TERT_MI2S_TX,
+		.capture_only = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.ignore_pmdown_time = 1,
+		.ignore_suspend = 1,
+		.ops = &sdx_tert_mi2s_be_ops,
 		SND_SOC_DAILINK_REG(tlv320aic3x_codec),
 	},
 };
@@ -592,9 +787,8 @@ static int sdx_ssr_enable(struct device *dev, void *data)
 		dev_dbg(dev, "%s: TODO \n", __func__);
 	}
 
-#if IS_ENABLED(CONFIG_AUDIO_QGKI)
-	snd_soc_card_change_online_state(card, 1);
-#endif /* CONFIG_AUDIO_QGKI */
+	snd_card_notify_user(SND_CARD_STATUS_ONLINE);
+
 	dev_dbg(dev, "%s: setting snd_card to ONLINE\n", __func__);
 
 err:
@@ -612,10 +806,9 @@ static void sdx_ssr_disable(struct device *dev, void *data)
 	}
 
 	dev_dbg(dev, "%s: setting snd_card to OFFLINE\n", __func__);
-#if IS_ENABLED(CONFIG_AUDIO_QGKI)
-	snd_soc_card_change_online_state(card, 0);
-#endif /* CONFIG_AUDIO_QGKI */
 
+
+	snd_card_notify_user(SND_CARD_STATUS_OFFLINE);
 	if (!strcmp(card->name, "sdx-stub-snd-card")) {
 		/* TODO */
 		dev_dbg(dev, "%s: TODO \n", __func__);
@@ -714,13 +907,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		goto err;
 	}
 
-	ret = snd_soc_of_parse_audio_routing(card, "qcom,audio-routing");
-	if (ret) {
-		dev_err(&pdev->dev, "%s: parse audio routing failed, err:%d\n",
-			__func__, ret);
-		goto err;
-	}
-
 	ret = msm_populate_dai_link_component_of_node(card);
 	if (ret) {
 		ret = -EPROBE_DEFER;
@@ -747,7 +933,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	msm_common_snd_init(pdev, card);
 
 	pdata->prim_master_p = of_parse_phandle(pdev->dev.of_node,
-						"qcom,prim_mi2s_master",
+						"qcom,prim_mi2s_aux_master",
 						0);
 
 	pdata->lpaif_pri_muxsel_virt_addr = ioremap(LPAIF_PRI_MODE_MUXSEL, 4);
@@ -757,6 +943,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err;
 	}
+
 	pdata->lpass_mux_spkr_ctl_virt_addr =
 				ioremap(LPASS_CSR_GP_IO_MUX_SPKR_CTL, 4);
 	if (pdata->lpass_mux_spkr_ctl_virt_addr == NULL) {
@@ -767,6 +954,28 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	}
 	atomic_set(&mi2s_ref_count, 0);
 
+	pdata->tert_master_p = of_parse_phandle(pdev->dev.of_node,
+						"qcom,tert_mi2s_aux_master",
+						0);
+
+	pdata->lpaif_tert_muxsel_virt_addr = ioremap(LPAIF_TERTIARY_MODE_MUXSEL, 4);
+	if (pdata->lpaif_tert_muxsel_virt_addr == NULL) {
+		pr_err("%s Tertiary muxsel virt addr is null\n", __func__);
+
+		ret = -EINVAL;
+		goto err;
+	}
+
+	pdata->lpass_tert_mux_spkr_ctl_virt_addr =
+				ioremap(LPASS_CSR_GP_IO_MUX_TER_CTL, 4);
+	if (pdata->lpass_tert_mux_spkr_ctl_virt_addr == NULL) {
+		pr_err("%s lpass spkr ctl virt addr is null\n", __func__);
+
+		ret = -EINVAL;
+		goto err2;
+	}
+	atomic_set(&tert_mi2s_ref_count, 0);
+
 	ret = msm_audio_ssr_register(&pdev->dev);
 	if (ret)
 		pr_err("%s: Registration with SND event FWK failed ret = %d\n",
@@ -775,6 +984,8 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	is_initial_boot = true;
 
 	return 0;
+err2:
+	iounmap(pdata->lpass_tert_mux_spkr_ctl_virt_addr);
 err1:
 	iounmap(pdata->lpass_mux_spkr_ctl_virt_addr);
 err:

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -58,6 +59,12 @@ enum {
 	WSA_8OHMS = 8,
 	WSA_16OHMS = 16,
 	WSA_32OHMS = 32,
+};
+
+enum {
+	WCD_RX1,
+	WCD_RX2,
+	WCD_RX3
 };
 
 struct wsa_temp_register {
@@ -1580,6 +1587,7 @@ static int wsa883x_event_notify(struct notifier_block *nb,
 	u16 event = (val & 0xffff);
 	struct wsa883x_priv *wsa883x = container_of(nb, struct wsa883x_priv,
 						    parent_nblock);
+	struct wsa_ctrl_platform_data *plat_data = NULL;
 
 	if (!wsa883x)
 		return -EINVAL;
@@ -1624,6 +1632,38 @@ static int wsa883x_event_notify(struct notifier_block *nb,
 	case BOLERO_SLV_EVT_PA_ON_POST_FSCLK_ADIE_LB:
 		if (test_bit(SPKR_STATUS, &wsa883x->status_mask))
 			set_bit(SPKR_ADIE_LB, &wsa883x->status_mask);
+		break;
+	case BOLERO_SLV_EVT_RX_MACRO_PA_ON:
+		if (!wsa883x->parent_dev) {
+			dev_err(wsa883x->dev, "could not find parent dev\n");
+			return -EINVAL;
+		}
+
+		plat_data = dev_get_platdata(&wsa883x->parent_dev->dev);
+		if (!plat_data) {
+			dev_err(wsa883x->dev, "could not find parent pdata\n");
+			return -EINVAL;
+		}
+
+		snd_soc_component_update_bits(wsa883x->component,
+					WSA883X_PDM_WD_CTL,
+					0x01, 0x01);
+		snd_soc_component_update_bits(wsa883x->component,
+					WSA883X_PA_FSM_CTL,
+					0x01, 0x01);
+		wcd_enable_irq(&wsa883x->irq_info,
+				WSA883X_IRQ_INT_PDM_WD);
+		/* Added delay as per HW sequence */
+		usleep_range(3000, 3100);
+		snd_soc_component_update_bits(wsa883x->component,
+					WSA883X_DRE_CTL_1,
+					0x01, 0x00);
+		/* Added delay as per HW sequence */
+		usleep_range(5000, 5050);
+
+		plat_data->update_wsa_event(wsa883x->handle,
+					SLV_BOLERO_EVT_RX_MUTE,
+					(WCD_RX3 << 0x10));
 		break;
 	default:
 		dev_dbg(wsa883x->dev, "%s: unknown event %d\n",

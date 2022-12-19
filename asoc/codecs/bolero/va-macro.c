@@ -2750,7 +2750,8 @@ static int va_macro_init(struct snd_soc_component *component)
 				__func__);
 			return ret;
 		}
-		if (va_priv->version == BOLERO_VERSION_2_1)
+		if ((va_priv->version == BOLERO_VERSION_2_1) ||
+		    (va_priv->version == BOLERO_VERSION_2_2))
 			ret = snd_soc_dapm_new_controls(dapm,
 				va_macro_dapm_widgets_v2,
 				ARRAY_SIZE(va_macro_dapm_widgets_v2));
@@ -2792,7 +2793,8 @@ static int va_macro_init(struct snd_soc_component *component)
 				return ret;
 			}
 		}
-		if (va_priv->version == BOLERO_VERSION_2_1) {
+		if ((va_priv->version == BOLERO_VERSION_2_1) ||
+		    (va_priv->version == BOLERO_VERSION_2_2)) {
 			ret = snd_soc_dapm_add_routes(dapm,
 					va_audio_map_v2,
 					ARRAY_SIZE(va_audio_map_v2));
@@ -2882,7 +2884,8 @@ static int va_macro_init(struct snd_soc_component *component)
 	}
 	va_priv->component = component;
 
-	if (va_priv->version == BOLERO_VERSION_2_1) {
+	if ((va_priv->version == BOLERO_VERSION_2_1) ||
+	    (va_priv->version == BOLERO_VERSION_2_2)) {
 		snd_soc_component_update_bits(component,
 			BOLERO_CDC_VA_TOP_CSR_SWR_MIC_CTL0, 0xEE, 0xCC);
 		snd_soc_component_update_bits(component,

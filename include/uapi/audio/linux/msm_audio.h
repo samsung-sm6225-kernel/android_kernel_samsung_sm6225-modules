@@ -90,6 +90,8 @@
 					struct msm_acdb_cmd_device)
 #define AUDIO_GET_ACDB_BLK _IOW(AUDIO_IOCTL_MAGIC, 96,  \
 					struct msm_acdb_cmd_device)
+#define COMPAT_IOCTL_MAP_PHYS_ADDR 97
+#define COMPAT_IOCTL_UNMAP_PHYS_ADDR 98
 #define IOCTL_MAP_PHYS_ADDR _IOW(AUDIO_IOCTL_MAGIC, 97, int)
 #define IOCTL_UNMAP_PHYS_ADDR _IOW(AUDIO_IOCTL_MAGIC, 98, int)
 #define AUDIO_SET_EFFECTS_CONFIG   _IOW(AUDIO_IOCTL_MAGIC, 99, \
