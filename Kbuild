@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-only
 
+ifneq ($(CONFIG_ARCH_MONACO), y)
 KBUILD_CPPFLAGS += -DCONFIG_MSM_MMRM=1
+endif
 
 ifeq ($(CONFIG_ARCH_WAIPIO), y)
 include $(VIDEO_ROOT)/config/waipio_video.conf
@@ -38,6 +40,12 @@ LINUXINCLUDE    += -include $(VIDEO_ROOT)/config/ravelin_video.h \
                    -I$(VIDEO_ROOT)/driver/platform/ravelin/inc
 endif
 
+ifeq ($(CONFIG_ARCH_MONACO), y)
+include $(VIDEO_ROOT)/config/monaco_video.conf
+LINUXINCLUDE    += -include $(VIDEO_ROOT)/config/monaco_video.h \
+                   -I$(VIDEO_ROOT)/driver/platform/monaco/inc
+endif
+
 LINUXINCLUDE    += -I$(VIDEO_ROOT)/driver/vidc/inc \
                    -I$(VIDEO_ROOT)/driver/platform/common/inc \
                    -I$(VIDEO_ROOT)/include/uapi/vidc
@@ -69,6 +77,10 @@ endif
 
 ifeq ($(CONFIG_MSM_VIDC_RAVELIN), y)
 msm_video-objs += driver/platform/ravelin/src/msm_vidc_ravelin.o
+endif
+
+ifeq ($(CONFIG_MSM_VIDC_MONACO), y)
+msm_video-objs += driver/platform/monaco/src/msm_vidc_monaco.o
 endif
 
 ifeq ($(CONFIG_MSM_VIDC_IRIS2), y)
