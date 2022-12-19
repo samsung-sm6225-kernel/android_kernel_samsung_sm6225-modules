@@ -531,7 +531,8 @@ static int msm_gem_get_iova_locked(struct drm_gem_object *obj,
 		msm_gem_add_obj_to_aspace_active_list(aspace, obj);
 		mutex_unlock(&aspace->list_lock);
 	}
-	if (dev && !dev_is_dma_coherent(dev) && (msm_obj->flags & MSM_BO_CACHED)){
+	if (dev && !dev_is_dma_coherent(dev) && (msm_obj->flags & MSM_BO_CACHED)
+			&& (msm_obj->sgt)){
 		dma_sync_sg_for_device(dev, msm_obj->sgt->sgl,
 				msm_obj->sgt->nents, DMA_BIDIRECTIONAL);
 	}
