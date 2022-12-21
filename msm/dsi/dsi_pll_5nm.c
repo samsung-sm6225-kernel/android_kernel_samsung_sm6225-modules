@@ -1235,18 +1235,17 @@ static int dsi_pll_read_stored_trim_codes(struct dsi_pll_resource *pll_res,
 			codes_info->pll_codes.pll_codes_2,
 			codes_info->pll_codes.pll_codes_3);
 
-		if (vco_clk_rate != codes_info->clk_rate &&
-				codes_info->is_valid)
-			continue;
-
-		pll_res->cache_pll_trim_codes[0] =
-			codes_info->pll_codes.pll_codes_1;
-		pll_res->cache_pll_trim_codes[1] =
-			codes_info->pll_codes.pll_codes_2;
-		pll_res->cache_pll_trim_codes[2] =
-			codes_info->pll_codes.pll_codes_3;
-		found = true;
-		break;
+		if (vco_clk_rate == codes_info->clk_rate &&
+					codes_info->is_valid) {
+			pll_res->cache_pll_trim_codes[0] =
+				codes_info->pll_codes.pll_codes_1;
+			pll_res->cache_pll_trim_codes[1] =
+				codes_info->pll_codes.pll_codes_2;
+			pll_res->cache_pll_trim_codes[2] =
+				codes_info->pll_codes.pll_codes_3;
+			found = true;
+			break;
+		}
 	}
 
 	if (!found)
