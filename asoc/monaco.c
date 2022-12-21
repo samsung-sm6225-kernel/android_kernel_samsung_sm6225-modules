@@ -85,6 +85,13 @@
 /* Slimbus device id for SLIMBUS_DEVICE_1 */
 #define BT_SLIMBUS_DEV_ID 0
 
+
+struct card_status {
+	int state_counter;
+	int prev_state_counter;
+	struct mutex lock;
+};
+
 struct msm_asoc_mach_data {
 	struct snd_info_entry *codec_root;
 	struct msm_common_pdata *common_pdata;
@@ -97,6 +104,9 @@ struct msm_asoc_mach_data {
 	struct device_node *fsa_handle;
 	bool visense_enable;
 	struct srcu_notifier_head *slatecom_notifier_chain;
+	struct notifier_block notifier_cc_dsp_nb;
+	struct card_status cs;
+	bool is_standby_mode_supported;
 };
 
 enum bt_slimbus_clk_src {
@@ -110,7 +120,72 @@ static struct snd_soc_card snd_soc_card_monaco_msm;
 static int dmic_0_1_gpio_cnt;
 static int dmic_2_3_gpio_cnt;
 static atomic_t bt_slim_clk_src_value = ATOMIC_INIT(SLIMBUS_CLOCK_SRC_XO);
-static atomic_t card_status;
+
+static const char *get_domain_str(int domain)
+{
+	const char *domain_name = NULL;
+
+	switch (domain) {
+	case AUDIO_NOTIFIER_ADSP_DOMAIN:
+		domain_name = "ADSP";
+		break;
+	case AUDIO_NOTIFIER_MODEM_DOMAIN:
+		domain_name = "MODEM";
+		break;
+	case AUDIO_NOTIFIER_CC_DOMAIN:
+		domain_name = "CC";
+		break;
+	case AUDIO_NOTIFIER_CCDSP_DOMAIN:
+		domain_name = "CCDSP";
+		break;
+	default:
+		domain_name = "UNKNOWN";
+		break;
+	}
+
+	return domain_name;
+}
+
+static const char *get_opcode_str(int opcode)
+{
+	const char *notifier_state = NULL;
+
+	switch (opcode) {
+	case AUDIO_NOTIFIER_SERVICE_DOWN:
+		notifier_state = "DOWN";
+		break;
+	case AUDIO_NOTIFIER_SERVICE_UP:
+		notifier_state = "UP";
+		break;
+	default:
+		notifier_state = "UNKNOWN";
+		break;
+	}
+
+	return notifier_state;
+}
+
+static const char *get_snd_card_state_str(int cs)
+{
+	const char *card_state = NULL;
+
+	switch (cs) {
+	case SND_CARD_STATUS_OFFLINE:
+		card_state = "OFFLINE";
+		break;
+	case SND_CARD_STATUS_ONLINE:
+		card_state = "ONLINE";
+		break;
+	case SND_CARD_STATUS_STANDBY:
+		card_state = "STANDBY";
+		break;
+	default:
+		card_state = "INVALID";
+		break;
+	}
+
+	return card_state;
+}
 
 static void check_userspace_service_state(struct snd_soc_pcm_runtime *rtd,
 						struct msm_common_pdata *pdata)
@@ -1007,7 +1082,6 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
                         "asoc-codec-names", &codec_name);
 
 		if (!rc && !strcmp(codec_name, "cc_codec")) {
-
 			rc = of_property_read_u32(dev->of_node,
 				"qcom,cc-va-intf-enable", &val);
 			if (!rc && val) {
@@ -1095,38 +1169,93 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	return card;
 }
 
-static void monaco_update_snd_card_status(unsigned long opcode)
+static void monaco_update_snd_card_status(struct msm_asoc_mach_data *pdata,
+								int domain, int opcode,
+								bool is_standby_mode_supported)
 {
-	pr_debug("%s: Service opcode 0x%lx\n", __func__, opcode);
+	int cur_state = SND_CARD_STATUS_INVALID;
 
+	pr_debug("%s: Subsys-domain %s(%d), Service-opcode %s(%d)\n", __func__,
+			get_domain_str(domain), domain, get_opcode_str(opcode), opcode);
+
+	if (!pdata)
+		return;
+
+	mutex_lock(&pdata->cs.lock);
 	switch (opcode) {
 	case AUDIO_NOTIFIER_SERVICE_DOWN:
+		pdata->cs.state_counter--;
+		/**
+		 * On 1st service down(ADSP SSR) event, MSM which has companion
+		 * chip, API updates soundcard status as STANDBY so that userspace
+		 * handles stream accordingly.
+		 */
+		if (pdata->cs.state_counter == SND_CARD_STATUS_OFFLINE) {
+			if (domain == AUDIO_NOTIFIER_ADSP_DOMAIN &&
+				is_standby_mode_supported) {
+				cur_state = SND_CARD_STATUS_STANDBY;
+			} else {
+				cur_state = SND_CARD_STATUS_OFFLINE;
+			}
+		/**
+		 * On 2nd service down event(When CC goes down post ADSP SSR),
+		 * API updates current card state as OFFLINE.
+		 */
+		} else if (pdata->cs.state_counter == SND_CARD_STATUS_INVALID) {
+			if (pdata->cs.prev_state_counter == SND_CARD_STATUS_STANDBY)
+				cur_state = SND_CARD_STATUS_OFFLINE;
+		} else {
+			break;
+		}
 
-		if (atomic_inc_return(&card_status) == 1) {
-			snd_card_notify_user(0);
+		/* Update previous card state */
+		if (cur_state == SND_CARD_STATUS_OFFLINE ||
+			cur_state == SND_CARD_STATUS_STANDBY) {
+			pdata->cs.prev_state_counter = cur_state;
+			snd_card_notify_user(cur_state);
+			pr_info("%s: Sound card is in %s\n", __func__,
+					get_snd_card_state_str(cur_state));
 		}
 		break;
 	case AUDIO_NOTIFIER_SERVICE_UP:
-		if (atomic_dec_return(&card_status) == 0) {
-			snd_card_notify_user(1);
+		/**
+		 * Up notification comes once for ADSP and CC/CC_DSP as part
+		 * of bootup. Post bootup as part of SSR, API counts ADSP and
+		 * CC/CC_DSP's notification independently.
+		 */
+		pdata->cs.state_counter++;
+		if (pdata->cs.state_counter == SND_CARD_STATUS_ONLINE) {
+			snd_card_notify_user(SND_CARD_STATUS_ONLINE);
+			pr_info("%s: Sound card is in ONLINE\n", __func__);
 		}
 		break;
 	default:
 		break;
 	}
+	mutex_unlock(&pdata->cs.lock);
 }
 
 static int monaco_cc_dsp_notifier_service_cb(struct notifier_block *this,
 					 unsigned long opcode, void *ptr)
 {
+	struct msm_asoc_mach_data *pdata = NULL;
+
 	pr_debug("%s: Service opcode 0x%lx\n", __func__, opcode);
+
+	if (!this)
+		return NOTIFY_STOP;
+
+	pdata = container_of(this, struct msm_asoc_mach_data,
+							notifier_cc_dsp_nb);
 
 	switch (opcode) {
 	case DSP_ERROR:
-		monaco_update_snd_card_status(AUDIO_NOTIFIER_SERVICE_DOWN);
+		monaco_update_snd_card_status(pdata, AUDIO_NOTIFIER_CCDSP_DOMAIN,
+								AUDIO_NOTIFIER_SERVICE_DOWN, false);
 		break;
 	case DSP_READY:
-		monaco_update_snd_card_status(AUDIO_NOTIFIER_SERVICE_UP);
+		monaco_update_snd_card_status(pdata, AUDIO_NOTIFIER_CCDSP_DOMAIN,
+								AUDIO_NOTIFIER_SERVICE_UP, false);
 		break;
 	default:
 		break;
@@ -1135,13 +1264,9 @@ static int monaco_cc_dsp_notifier_service_cb(struct notifier_block *this,
 	return NOTIFY_OK;
 }
 
-static struct notifier_block notifier_cc_dsp_nb = {
-	.notifier_call  = monaco_cc_dsp_notifier_service_cb,
-	.priority = 0,
-};
-
-static int monaco_ssr_enable(struct device *dev, void *data)
+static int monaco_ssr_enable(struct device *dev, void *data, int domain)
 {
+	struct msm_asoc_mach_data *pdata = NULL;
 	struct platform_device *pdev = to_platform_device(dev);
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	int ret = 0;
@@ -1152,33 +1277,38 @@ static int monaco_ssr_enable(struct device *dev, void *data)
 		goto err;
 	}
 
+	pdata = snd_soc_card_get_drvdata(card);
+
 	if (!strcmp(card->name, "monaco-stub-snd-card")) {
 		/* TODO */
 		dev_dbg(dev, "%s: TODO\n", __func__);
 	}
 
 	atomic_set(&bt_slim_clk_src_value, SLIMBUS_CLOCK_SRC_XO);
-	dev_dbg(dev, "%s: reset bt_slim_clk_src_value = %d\n", __func__,
-		atomic_read(&bt_slim_clk_src_value));
-	monaco_update_snd_card_status(AUDIO_NOTIFIER_SERVICE_UP);
-	dev_dbg(dev, "%s: setting snd_card to ONLINE\n", __func__);
+	dev_dbg(dev, "%s: reset bt_slim_clk_src_value = %d, domain %d\n", __func__,
+		atomic_read(&bt_slim_clk_src_value), domain);
+	monaco_update_snd_card_status(pdata, domain, AUDIO_NOTIFIER_SERVICE_UP, false);
 
 err:
 	return ret;
 }
 
-static void monaco_ssr_disable(struct device *dev, void *data)
+static void monaco_ssr_disable(struct device *dev, void *data, int domain)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
+	struct msm_asoc_mach_data *pdata = NULL;
 
 	if (!card) {
 		dev_err(dev, "%s: card is NULL\n", __func__);
 		return;
 	}
 
-	dev_dbg(dev, "%s: setting snd_card to OFFLINE\n", __func__);
-	monaco_update_snd_card_status(AUDIO_NOTIFIER_SERVICE_DOWN);
+	pdata = snd_soc_card_get_drvdata(card);
+
+	if (pdata)
+		monaco_update_snd_card_status(pdata, domain, AUDIO_NOTIFIER_SERVICE_DOWN,
+							pdata->is_standby_mode_supported);
 
 	if (!strcmp(card->name, "monaco-stub-snd-card")) {
 		/* TODO */
@@ -1186,7 +1316,7 @@ static void monaco_ssr_disable(struct device *dev, void *data)
 	}
 }
 
-static const struct snd_event_ops monaco_ssr_ops = {
+static const struct snd_event_ops_v2 monaco_ssr_ops = {
 	.enable = monaco_ssr_enable,
 	.disable = monaco_ssr_disable,
 };
@@ -1216,8 +1346,8 @@ static int msm_audio_ssr_register(struct device *dev)
 					msm_audio_ssr_compare, node);
 	}
 
-	ret = snd_event_master_register(dev, &monaco_ssr_ops,
-					ssr_clients, NULL);
+	ret = snd_event_master_register_v2(dev, &monaco_ssr_ops,
+		  ssr_clients, NULL);
 	if (!ret)
 		snd_event_notify(dev, SND_EVENT_UP);
 
@@ -1284,6 +1414,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 
 	ret = of_property_read_string(pdev->dev.of_node, "asoc-codec-names", &codec_name);
 	if (!ret && !strcmp(codec_name, "cc_codec")) {
+		pdata->is_standby_mode_supported = true;
 		dev_info(&pdev->dev, "%s: Routing comes from companion chip\n", __func__);
 	} else {
 		ret = snd_soc_of_parse_audio_routing(card, "qcom,audio-routing");
@@ -1391,14 +1522,24 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	else
 		pdata->visense_enable = val;
 
-	atomic_set(&card_status, 1);
+	mutex_init(&pdata->cs.lock);
+	/**
+	 * By default state is OFFLINE, once ADSP is up post registration
+	 * to snd event, state_counter moves to ONLINE using
+	 * monaco_update_snd_card_status API.
+	 */
+	pdata->cs.state_counter = SND_CARD_STATUS_OFFLINE;
+
 	ret = msm_audio_ssr_register(&pdev->dev);
 	if (ret)
 		pr_err("%s: Registration with SND event FWK failed ret = %d\n",
 			__func__, ret);
 
+	pdata->notifier_cc_dsp_nb.notifier_call  = monaco_cc_dsp_notifier_service_cb;
+	pdata->notifier_cc_dsp_nb.priority = 0;
 	pdata->slatecom_notifier_chain =
-		(struct srcu_notifier_head *)slatecom_register_notifier(&notifier_cc_dsp_nb);
+		(struct srcu_notifier_head *)slatecom_register_notifier(
+			&pdata->notifier_cc_dsp_nb);
 	is_initial_boot = true;
 	return 0;
 err:
@@ -1418,7 +1559,8 @@ static int msm_asoc_machine_remove(struct platform_device *pdev)
 	if (pdata)
 	{
 		common_pdata = pdata->common_pdata;
-		slatecom_unregister_notifier(pdata->slatecom_notifier_chain, &notifier_cc_dsp_nb);
+		slatecom_unregister_notifier(pdata->slatecom_notifier_chain,
+			&pdata->notifier_cc_dsp_nb);
 		if (common_pdata)
 			msm_common_snd_deinit(common_pdata);
 
@@ -1426,6 +1568,9 @@ static int msm_asoc_machine_remove(struct platform_device *pdev)
 	snd_event_master_deregister(&pdev->dev);
 	if(card)
 		snd_soc_unregister_card(card);
+
+	pdata->cs.state_counter = SND_CARD_STATUS_OFFLINE;
+	mutex_destroy(&pdata->cs.lock);
 
 	return 0;
 }
