@@ -391,6 +391,7 @@ struct dsi_phy_hw_ops {
  * @length:                Length of the DSI dynamic refresh register base map.
  * @index:                 Instance ID of the controller.
  * @version:               DSI PHY version.
+ * @clamp_enable:          True if phy clamp is enabled.
  * @phy_clamp_base:        Base address of phy clamp register map.
  * @feature_map:           Features supported by DSI PHY.
  * @ops:                   Function pointer to PHY operations.
@@ -403,6 +404,7 @@ struct dsi_phy_hw {
 	u32 index;
 
 	enum dsi_phy_version version;
+	bool clamp_enable;
 	void __iomem *phy_clamp_base;
 
 	DECLARE_BITMAP(feature_map, DSI_PHY_MAX_FEATURES);

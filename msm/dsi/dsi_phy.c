@@ -340,6 +340,9 @@ static int dsi_phy_settings_init(struct platform_device *pdev,
 	phy->allow_phy_power_off = of_property_read_bool(pdev->dev.of_node,
 			"qcom,panel-allow-phy-poweroff");
 
+	phy->hw.clamp_enable = of_property_read_bool(pdev->dev.of_node,
+			"qcom,phy-clamp-enable");
+
 	of_property_read_u32(pdev->dev.of_node,
 			"qcom,dsi-phy-regulator-min-datarate-bps",
 			&phy->regulator_min_datarate_bps);
