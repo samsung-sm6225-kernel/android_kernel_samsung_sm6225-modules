@@ -966,3 +966,11 @@ void dsi_phy_hw_v4_0_set_continuous_clk(struct dsi_phy_hw *phy, bool enable)
 
 	wmb(); /* make sure request is set */
 }
+
+void dsi_phy_hw_v4_0_phy_idle_off(struct dsi_phy_hw *phy)
+{
+	if (phy->version >= DSI_PHY_VERSION_4_2 && phy->clamp_enable) {
+		DSI_W32(phy, DSIPHY_CMN_CTRL_4, 0x1);
+		DSI_W32(phy, DSIPHY_CMN_CTRL_3, 0x0);
+	}
+}

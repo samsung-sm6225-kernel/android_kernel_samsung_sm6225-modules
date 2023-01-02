@@ -126,6 +126,7 @@ void dsi_phy_hw_v4_0_reset_clk_en_sel(struct dsi_phy_hw *phy);
 void dsi_phy_hw_v4_0_set_continuous_clk(struct dsi_phy_hw *phy, bool enable);
 void dsi_phy_hw_v4_0_commit_phy_timing(struct dsi_phy_hw *phy,
 		struct dsi_phy_per_lane_cfgs *timing);
+void dsi_phy_hw_v4_0_phy_idle_off(struct dsi_phy_hw *phy);
 
 /* Definitions for 4nm PHY hardware driver */
 void dsi_phy_hw_v5_0_enable(struct dsi_phy_hw *phy, struct dsi_phy_cfg *cfg);

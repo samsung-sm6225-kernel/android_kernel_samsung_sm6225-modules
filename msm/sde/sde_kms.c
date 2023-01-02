@@ -3915,6 +3915,58 @@ static int sde_kms_trigger_null_flush(struct msm_kms *kms)
 	return rc;
 }
 
+#ifdef CONFIG_DEEPSLEEP
+static int _sde_kms_pm_deepsleep_helper(struct sde_kms *sde_kms, bool enter)
+{
+	int i, rc = 0;
+	void *display;
+	struct dsi_display *dsi_display;
+
+	if (!pm_suspend_via_firmware())
+		return 0;
+	else {
+
+		SDE_INFO("Deepsleep : enter %d\n", enter);
+
+		for (i = 0; i < sde_kms->dsi_display_count; i++) {
+			display = sde_kms->dsi_displays[i];
+			dsi_display = (struct dsi_display *)display;
+
+			if (enter) {
+
+				/*During deepsleep, clk_parent are reset at HW
+				 * but sw caching is retained in clk framework. To
+				 * maintain same state. unset parents and restore
+				 * during exit.
+				 */
+
+				if(dsi_display->needs_clk_src_reset)
+					rc = dsi_display_set_clk_src(dsi_display, true);
+
+				/* DSI ctrl regulator can be disabled, even in static
+				 * screen, during deepsleep.
+				 */
+				if (dsi_display->needs_ctrl_vreg_disable)
+					(void)dsi_display_ctrl_vreg_off(dsi_display);
+			} else {
+				if (dsi_display->needs_ctrl_vreg_disable)
+					(void)dsi_display_ctrl_vreg_on(dsi_display);
+
+				if (dsi_display->needs_clk_src_reset)
+					(void)dsi_display_set_clk_src(dsi_display, false);
+			}
+		}
+	}
+	return rc;
+}
+#else
+static inline int _sde_kms_pm_deepsleep_helper(struct sde_kms *sde_kms,
+					bool enter)
+{
+	return 0;
+}
+#endif
+
 static void _sde_kms_pm_suspend_idle_helper(struct sde_kms *sde_kms,
 	struct device *dev)
 {
@@ -4124,6 +4176,8 @@ unlock:
 	pm_runtime_put_sync(dev);
 	pm_runtime_get_noresume(dev);
 
+	_sde_kms_pm_deepsleep_helper(sde_kms, true);
+
 	/* dump clock state before entering suspend */
 	if (sde_kms->pm_suspend_clk_dump)
 		_sde_kms_dump_clks_state(sde_kms);
@@ -4161,6 +4215,9 @@ retry:
 	} else if (WARN_ON(ret)) {
 		goto end;
 	}
+
+	/* If coming out of deepsleep, restore resources.*/
+	_sde_kms_pm_deepsleep_helper(sde_kms, false);
 
 	sde_kms->suspend_block = false;
 

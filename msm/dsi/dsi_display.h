@@ -149,6 +149,8 @@ struct dsi_display_ext_bridge {
  * @disp_te_gpio:     GPIO for panel TE interrupt.
  * @is_te_irq_enabled:bool to specify whether TE interrupt is enabled.
  * @esd_te_gate:      completion gate to signal TE interrupt.
+ * @needs_clk_src_reset: Is clock source reset needed.
+ * @needs_ctrl_vreg_disable: Is ctrl vreg disable needed.
  * @ctrl_count:       Number of DSI interfaces required by panel.
  * @ctrl:             Controller information for DSI display.
  * @panel:            Handle to DSI panel.
@@ -213,6 +215,8 @@ struct dsi_display {
 	int disp_te_gpio;
 	bool is_te_irq_enabled;
 	struct completion esd_te_gate;
+	bool needs_clk_src_reset;
+	bool needs_ctrl_vreg_disable;
 
 	u32 ctrl_count;
 	struct dsi_display_ctrl ctrl[MAX_DSI_CTRLS_PER_DISPLAY];
@@ -841,5 +845,29 @@ bool dsi_display_mode_match(const struct dsi_display_mode *mode1,
  * Return: error code
  */
 int dsi_display_update_transfer_time(void *display, u32 transfer_time);
+
+/**
+ * dsi_display_set_clk_src() - set the clocks source
+ * @display:         handle to display
+ * @set_xo:          check clk source is xo clk or not
+ * Return: Zero on Success
+ */
+int dsi_display_set_clk_src(struct dsi_display *display, bool set_xo);
+
+/**
+ * dsi_display_ctrl_vreg_on() - enable dsi ctrl regulator
+ * @display:         Handle to display
+ *
+ * Return: Zero on Success
+ */
+int dsi_display_ctrl_vreg_on(struct dsi_display *display);
+
+/**
+ * dsi_display_ctrl_vreg_off() - disable dsi ctrl regulator
+ * @display:         Handle to display
+ *
+ * Return: Zero on Success
+ */
+int dsi_display_ctrl_vreg_off(struct dsi_display *display);
 
 #endif /* _DSI_DISPLAY_H_ */
