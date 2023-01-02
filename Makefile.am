@@ -1,11 +1,31 @@
+#QTI_TECHPACK is used since kernel 5.15
+ifeq ($(QTI_TECHPACK), true)
+AUDIO_KERNEL_PATH=$(PWD)/../../../vendor/qcom/opensource/audio-kernel-ar/
+AUDIO_ROOT=$(AUDIO_KERNEL_PATH)
+# Use USERINCLUDE when you must reference the UAPI directories only.
+USERINCLUDE     += \
+                -I$(AUDIO_KERNEL_PATH)/include/uapi/audio
+
+# Use LINUXINCLUDE when you must reference the include/ directory.
+# Needed to be compatible with the O= option
+INCS    += \
+                -I$(AUDIO_KERNEL_PATH)/include/uapi \
+                -I$(AUDIO_KERNEL_PATH)/include/uapi/audio \
+                -I$(AUDIO_KERNEL_PATH)/include/asoc \
+                -I$(AUDIO_KERNEL_PATH)/include
+
+KBUILD_OPTIONS := AUDIO_ROOT=$(AUDIO_KERNEL_PATH)
+else
 AUDIO_ROOT=$(PWD)
 UAPI_OUT=$(PWD)
 HEADER_INSTALL_DIR=$(KERNEL_SRC)/scripts
 KERNEL_BINARY_DIR=$(KERNEL_SRC)/../kernel-build-artifacts
 
 KBUILD_OPTIONS := AUDIO_ROOT=$(PWD)
-KBUILD_OPTIONS += MODNAME=audio
 KBUILD_OPTIONS += UAPI_OUT=$(PWD)
+subdir-ccflags-y += -I$(AUDIO_ROOT)/include/uapi/
+endif
+KBUILD_OPTIONS += MODNAME=audio
 
 AUDIO_KERNEL_HEADERS_PATH1 =  $(shell ls ./include/uapi/audio/linux/*.h)
 AUDIO_KERNEL_HEADERS_PATH2 =  $(shell ls ./include/uapi/audio/linux/mfd/wcd9xxx/*.h)
@@ -26,10 +46,6 @@ endif
 ifeq ($(TARGET_SUPPORT), sa525m))
 KBUILD_OPTIONS += CONFIG_ARCH_SA525M=y
 endif
-
-subdir-ccflags-y += -I$(AUDIO_ROOT)/include/uapi/
-
-subdir-ccflags-y += -I$(AUDIO_ROOT)/include/uapi/
 
 obj-m := ipc/
 obj-m += dsp/
@@ -64,11 +80,17 @@ KBUILD_OPTIONS += CONFIG_SND_SOC_SA6155=m
 endif
 endif
 
+ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), lemans))
+KBUILD_OPTIONS += CONFIG_SND_SOC_AUTO=y
+KBUILD_OPTIONS += CONFIG_SND_SOC_SA8255=m
+endif
+
 define PROCESS_HEADERS
 	$(foreach name,$(1),$(shell cd $(KERNEL_BINARY_DIR) && $(KERNEL_SRC)/scripts/headers_install.sh $(2)$(name) $(3)$(name)))
 endef
 
 all:
+ifneq ($(QTI_TECHPACK), true)
 	$(shell rm -fr $(shell pwd)/soc/core.h)
 	$(shell ln -s $(KERNEL_SRC)/drivers/pinctrl/core.h $(shell pwd)/soc/core.h)
 	$(shell rm -fr $(shell pwd)/include/soc/internal.h)
@@ -92,10 +114,15 @@ all:
 	$(call PROCESS_HEADERS, $(notdir $(shell ls $(AUDIO_ROOT)/include/uapi/audio/linux/*.h)), $(AUDIO_ROOT)/include/uapi/audio/linux/, $(KERNEL_BINARY_DIR)/usr/include/audio/linux/)
 	$(call PROCESS_HEADERS, $(notdir $(shell ls $(AUDIO_ROOT)/include/uapi/audio/linux/mfd/wcd9xxx/*.h)), $(AUDIO_ROOT)/include/uapi/audio/linux/mfd/wcd9xxx/, $(KERNEL_BINARY_DIR)/usr/include/audio/linux/mfd/wcd9xxx/)
 	$(call PROCESS_HEADERS, $(notdir $(shell ls $(AUDIO_ROOT)/include/uapi/audio/sound/*.h)), $(AUDIO_ROOT)/include/uapi/audio/sound/, $(KERNEL_BINARY_DIR)/usr/include/audio/sound/)
+endif
 	$(MAKE) -C $(KERNEL_SRC) M=$(shell pwd) modules $(KBUILD_OPTIONS)
 
 modules_install:
 	$(MAKE) INSTALL_MOD_STRIP=1 -C $(KERNEL_SRC) M=$(shell pwd) modules_install
+ifeq ($(QTI_TECHPACK), true)
+%:
+	$(MAKE) -C $(KERNEL_SRC) M=$(M) $(KBUILD_OPTIONS)
+endif
 
 clean:
 	rm -f *.o *.ko *.mod.c *.mod.o *~ .*.cmd Module.symvers

@@ -560,6 +560,8 @@ static int gpr_probe(struct rpmsg_device *rpdev)
 	dev_info(dev, "%s: gpr-lite probe success\n",
 		__func__);
 
+	gpr_set_q6_state(GPR_SUBSYS_LOADED);
+
 	return 0;
 }
 
