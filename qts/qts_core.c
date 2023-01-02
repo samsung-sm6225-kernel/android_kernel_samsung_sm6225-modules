@@ -177,7 +177,7 @@ static int qts_populate_vm_info(struct qts_data *qts_data)
 	rc = of_property_read_string(np, "qts,trusted-touch-type",
 						&vm_info->trusted_touch_type);
 	if (rc) {
-		pr_warn("%s: No trusted touch type selection made\n");
+		pr_warn("No trusted touch type selection mode\n");
 		vm_info->mem_tag = GH_MEM_NOTIFIER_TAG_TOUCH_PRIMARY;
 		vm_info->irq_label = GH_IRQ_LABEL_TRUSTED_TOUCH_PRIMARY;
 		rc = 0;
