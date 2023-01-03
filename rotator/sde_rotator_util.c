@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012, 2015-2019, 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #define pr_fmt(fmt)	"%s: " fmt, __func__
 
@@ -903,7 +903,7 @@ static int sde_mdp_map_buffer(struct sde_mdp_img_data *data, bool rotator,
 		 * provided here.
 		 */
 		data->srcp_attachment->dma_map_attrs |=
-			DMA_ATTR_DELAYED_UNMAP;
+			DMA_ATTR_DELAYED_UNMAP | DMA_ATTR_SKIP_CPU_SYNC;
 
 		if (data->srcp_dma_buf && data->srcp_dma_buf->ops &&
 				data->srcp_dma_buf->ops->get_flags) {
