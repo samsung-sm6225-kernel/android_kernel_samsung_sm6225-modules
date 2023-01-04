@@ -95,6 +95,10 @@ PRODUCT_PACKAGES += \
 endif	#wear_aon
 endif	#monaco
 ifeq ($(call is-board-platform-in-list,msmnile), true)
+ifneq (,$(filter $(TARGET_BOARD_PLATFORM)$(TARGET_BOARD_SUFFIX), msmnile_gvmq))
+PRODUCT_PACKAGES  += $(KERNEL_MODULES_OUT)/machine_dlkm.ko \
+        $(KERNEL_MODULES_OUT)/stub_dlkm.ko
+else
 PRODUCT_PACKAGES += $(KERNEL_MODULES_OUT)/q6_notifier_dlkm.ko\
         $(KERNEL_MODULES_OUT)/spf_core_dlkm.ko \
         $(KERNEL_MODULES_OUT)/audpkt_ion_dlkm.ko \
@@ -108,3 +112,4 @@ PRODUCT_PACKAGES += $(KERNEL_MODULES_OUT)/q6_notifier_dlkm.ko\
         $(KERNEL_MODULES_OUT)/machine_dlkm.ko \
         $(KERNEL_MODULES_OUT)/q6_pdr_dlkm.ko
 endif   #msmnile
+endif

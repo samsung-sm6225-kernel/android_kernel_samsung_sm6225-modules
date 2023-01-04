@@ -52,7 +52,11 @@ KBUILD_OPTIONS += BOARD_PLATFORM=$(TARGET_BOARD_PLATFORM)
 KBUILD_OPTIONS += $(AUDIO_SELECT)
 ifeq ($(call is-board-platform-in-list, msmnile),true)
 KBUILD_OPTIONS += CONFIG_SND_SOC_AUTO=y
+ifneq (,$(filter $(TARGET_BOARD_PLATFORM)$(TARGET_BOARD_SUFFIX), msmnile_gvmq))
+KBUILD_OPTIONS +=CONFIG_SND_SOC_GVM=y
+else
 KBUILD_OPTIONS += CONFIG_SND_SOC_SA8155=m
+endif
 endif
 
 KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS=$(PWD)/$(call intermediates-dir-for,DLKM,msm-ext-disp-module-symvers)/Module.symvers
@@ -63,6 +67,26 @@ AUDIO_SRC_FILES := \
 	$(wildcard $(LOCAL_PATH)/*/*/*) \
 	$(wildcard $(LOCAL_PATH)/*/*/*/*)
 
+ifneq (,$(filter $(TARGET_BOARD_PLATFORM)$(TARGET_BOARD_SUFFIX), msmnile_gvmq))
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
+LOCAL_MODULE              := stub_dlkm.ko
+LOCAL_MODULE_KBUILD_NAME  := asoc/codecs/stub_dlkm.ko
+LOCAL_MODULE_TAGS         := optional
+LOCAL_MODULE_DEBUG_ENABLE := true
+LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
+include $(DLKM_DIR)/Build_external_kernelmodule.mk
+########################### ASOC MACHINE ################################
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
+LOCAL_MODULE              := machine_dlkm.ko
+LOCAL_MODULE_KBUILD_NAME  := asoc/spf_machine_dlkm.ko
+LOCAL_MODULE_TAGS         := optional
+LOCAL_MODULE_DEBUG_ENABLE := true
+LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
+include $(DLKM_DIR)/Build_external_kernelmodule.mk
+########################### LPASS-CDC CODEC  ###########################
+else
 ########################### dsp ################################
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
@@ -498,3 +522,4 @@ endif
 ###########################################################
 endif # DLKM check
 endif # supported target check
+endif

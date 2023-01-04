@@ -111,6 +111,10 @@ endif	#monaco
 endif
 else
 ifeq ($(call is-board-platform-in-list,msmnile), true)
+ifneq (,$(filter $(TARGET_BOARD_PLATFORM)$(TARGET_BOARD_SUFFIX), msmnile_gvmq))
+AUDIO_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/machine_dlkm.ko\
+	$(KERNEL_MODULES_OUT)/stub_dlkm.ko
+else
 AUDIO_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/q6_notifier_dlkm.ko\
         $(KERNEL_MODULES_OUT)/spf_core_dlkm.ko \
         $(KERNEL_MODULES_OUT)/audpkt_ion_dlkm.ko \
@@ -124,5 +128,6 @@ AUDIO_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/q6_notifier_dlkm.ko\
         $(KERNEL_MODULES_OUT)/machine_dlkm.ko \
         $(KERNEL_MODULES_OUT)/q6_pdr_dlkm.ko
 endif   #msmnile
+endif
 endif
 endif
