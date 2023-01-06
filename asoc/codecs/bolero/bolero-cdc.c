@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/of_platform.h>
@@ -21,6 +21,7 @@
 #include "internal.h"
 #include "bolero-clk-rsc.h"
 #include "asoc/bolero-slave-internal.h"
+#include <linux/qti-regmap-debugfs.h>
 
 #define DRV_NAME "bolero_codec"
 
@@ -1426,6 +1427,9 @@ static int bolero_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "%s:regmap init failed\n", __func__);
 		return -EINVAL;
 	}
+
+	devm_regmap_qti_debugfs_register(priv->dev, priv->regmap);
+
 	priv->read_dev = __bolero_reg_read;
 	priv->write_dev = __bolero_reg_write;
 
