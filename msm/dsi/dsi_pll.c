@@ -110,6 +110,11 @@ static void dsi_pll_parse_dfps(struct platform_device *pdev,
 	/* memcopy complete dfps structure from kernel virtual memory */
 	memcpy_fromio(pll_res->dfps, trim_codes, sizeof(struct dfps_info));
 
+	if (pll_res->dfps->vco_rate_cnt >= DFPS_MAX_NUM_OF_FRAME_RATES) {
+		DSI_PLL_ERR(pll_res, "vco_rate_cnt = %d -> %d\n",
+			pll_res->dfps->vco_rate_cnt, DFPS_MAX_NUM_OF_FRAME_RATES);
+		pll_res->dfps->vco_rate_cnt = DFPS_MAX_NUM_OF_FRAME_RATES;
+	}
 mem_err:
 	if (trim_codes)
 		memunmap(trim_codes);
