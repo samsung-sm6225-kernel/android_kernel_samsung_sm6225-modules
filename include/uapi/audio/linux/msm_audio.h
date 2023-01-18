@@ -3,6 +3,7 @@
  *
  * Copyright (C) 2008 Google, Inc.
  * Copyright (c) 2012, 2014, 2017, 2020, 2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _UAPI_LINUX_MSM_AUDIO_H
@@ -110,7 +111,9 @@
 #define AUDIO_DEREGISTER_ION _IOW(AUDIO_IOCTL_MAGIC, 108, struct msm_audio_ion_info)
 #define IOCTL_MAP_HYP_ASSIGN _IOW(AUDIO_IOCTL_MAGIC, 109, int)
 #define IOCTL_UNMAP_HYP_ASSIGN _IOW(AUDIO_IOCTL_MAGIC, 110, int)
-#define	AUDIO_MAX_COMMON_IOCTL_NUM	111
+#define IOCTL_MAP_HYP_ASSIGN_V2 _IOW(AUDIO_IOCTL_MAGIC, 111, struct msm_mdf_data)
+#define IOCTL_UNMAP_HYP_ASSIGN_V2 _IOW(AUDIO_IOCTL_MAGIC, 112, struct msm_mdf_data)
+#define	AUDIO_MAX_COMMON_IOCTL_NUM	113
 
 #define HANDSET_MIC			0x01
 #define HANDSET_SPKR			0x02
@@ -462,6 +465,16 @@ struct msm_adsp_event_data {
 	__u32 event_type;
 	__u32 payload_len;
 	__u8 payload[0];
+};
+
+/* ss_masks is generated from sys_ids
+ * for id in sys_ids
+ * ss_masks |= 1 << (id - 1)
+ */
+struct msm_mdf_data {
+	__u64 ss_masks;
+	__u32 mem_fd;
+	__u32 reserved;
 };
 
 #endif
