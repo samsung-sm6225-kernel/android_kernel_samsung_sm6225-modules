@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2016-2019, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -559,7 +559,7 @@ static int regmap_bus_read(void *context, const void *reg, size_t reg_size,
 		goto err;
 	ret = wcd9xxx->read_dev(wcd9xxx, c_reg, val_size, val, false);
 	if (ret < 0)
-		dev_err(dev, "%s: Codec read failed (%d), reg: 0x%x, size:%zd\n",
+		dev_err_ratelimited(dev, "%s: Codec read failed (%d), reg: 0x%x, size:%zd\n",
 			__func__, ret, rreg, val_size);
 	else {
 		for (i = 0; i < val_size; i++)
