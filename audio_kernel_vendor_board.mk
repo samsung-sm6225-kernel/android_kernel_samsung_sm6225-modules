@@ -4,9 +4,7 @@ ifeq ($(TARGET_KERNEL_DLKM_DISABLE), true)
     AUDIO_DLKM_ENABLE := true
   endif
 else
-  ifeq ($(TARGET_KERNEL_DLKM_AUDIO_OVERRIDE),true)
-    AUDIO_DLKM_ENABLE := true
-  endif
+  AUDIO_DLKM_ENABLE := true
 endif
 
 ifeq ($(AUDIO_DLKM_ENABLE), true)
