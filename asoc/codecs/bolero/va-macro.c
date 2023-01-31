@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2018-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -1338,6 +1338,10 @@ static int va_macro_enable_dec(struct snd_soc_dapm_widget *w,
 		/* Disable TX CLK */
 		snd_soc_component_update_bits(component, tx_vol_ctl_reg,
 					0x20, 0x00);
+		snd_soc_component_update_bits(component, tx_vol_ctl_reg,
+			0x40, 0x40);
+		snd_soc_component_update_bits(component, tx_vol_ctl_reg,
+			0x40, 0x00);
 		snd_soc_component_update_bits(component, tx_vol_ctl_reg,
 					0x10, 0x00);
 		break;
