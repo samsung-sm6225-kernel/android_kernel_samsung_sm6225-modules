@@ -1,5 +1,5 @@
 /* Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -1353,6 +1353,8 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	pr_err("Sound card %s registered\n", card->name);
 	spdev = pdev;
 
+	snd_card_set_card_status(SND_CARD_STATUS_ONLINE);
+
 	return 0;
 err:
 	msm_release_pinctrl(pdev);
@@ -1383,6 +1385,7 @@ static struct platform_driver asoc_machine_driver = {
 int __init auto_spf_init(void)
 {
 	pr_err("%s\n", __func__);
+	snd_card_sysfs_init();
 	return platform_driver_register(&asoc_machine_driver);
 }
 
