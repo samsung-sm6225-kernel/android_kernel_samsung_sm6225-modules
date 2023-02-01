@@ -22,7 +22,11 @@ KBUILD_OPTIONS += UAPI_OUT=$(UAPI_OUT)
 AUDIO_KERNEL_HEADERS_PATH1 =  $(shell ls ./include/uapi/audio/linux/*.h)
 AUDIO_KERNEL_HEADERS_PATH3 =  $(shell ls ./include/uapi/audio/sound/*.h)
 
-ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), sdxpinn sdxpinn-cpe-wkk))
+ifeq ($(TARGET_SUPPORT), sdxpinn)
+KBUILD_OPTIONS += CONFIG_ARCH_SDXPINN=y
+endif
+
+ifeq ($(TARGET_SUPPORT), sdxpinn-cpe-wkk)
 KBUILD_OPTIONS += CONFIG_ARCH_SDXPINN=y
 endif
 
