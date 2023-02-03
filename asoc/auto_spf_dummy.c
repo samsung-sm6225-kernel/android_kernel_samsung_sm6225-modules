@@ -155,6 +155,34 @@ enum {
 };
 
 enum {
+	IDX_PRIMARY_TDM_RX_0,
+	IDX_PRIMARY_TDM_TX_0,
+	IDX_SECONDARY_TDM_RX_0,
+	IDX_SECONDARY_TDM_TX_0,
+	IDX_TERTIARY_TDM_RX_0,
+	IDX_TERTIARY_TDM_TX_0,
+	IDX_QUATERNARY_TDM_RX_0,
+	IDX_QUATERNARY_TDM_TX_0,
+	IDX_QUINARY_TDM_RX_0,
+	IDX_QUINARY_TDM_TX_0,
+	IDX_SENARY_TDM_RX_0,
+	IDX_SENARY_TDM_TX_0,
+	IDX_SEPTENARY_TDM_RX_0,
+	IDX_SEPTENARY_TDM_TX_0,
+	IDX_HSIF0_TDM_RX_0,
+	IDX_HSIF0_TDM_TX_0,
+	IDX_HSIF1_TDM_RX_0,
+	IDX_HSIF1_TDM_TX_0,
+	IDX_HSIF2_TDM_RX_0,
+	IDX_HSIF2_TDM_TX_0,
+	IDX_HSIF3_TDM_RX_0,
+	IDX_HSIF3_TDM_TX_0,
+	IDX_HSIF4_TDM_RX_0,
+	IDX_HSIF4_TDM_TX_0,
+	IDX_GROUP_TDM_MAX,
+};
+
+enum {
 	MCLK1 = 0,
 	MCLK_MAX,
 };
@@ -625,6 +653,198 @@ struct snd_soc_card sa8255_snd_soc_card_auto_msm = {
 	.name = "sa8255-adp-star-snd-card",
 };
 
+static int msm_tdm_get_intf_idx(u16 id)
+{
+	switch (id) {
+		case IDX_PRIMARY_TDM_RX_0:
+		case IDX_PRIMARY_TDM_TX_0:
+			return TDM_PRI;
+		case IDX_SECONDARY_TDM_RX_0:
+		case IDX_SECONDARY_TDM_TX_0:
+			return TDM_SEC;
+		case IDX_TERTIARY_TDM_RX_0:
+		case IDX_TERTIARY_TDM_TX_0:
+			return TDM_TERT;
+		case IDX_QUATERNARY_TDM_RX_0:
+		case IDX_QUATERNARY_TDM_TX_0:
+			return TDM_QUAT;
+		case IDX_QUINARY_TDM_RX_0:
+		case IDX_QUINARY_TDM_TX_0:
+			return TDM_QUIN;
+		case IDX_SENARY_TDM_RX_0:
+		case IDX_SENARY_TDM_TX_0:
+			return TDM_SEN;
+		case IDX_SEPTENARY_TDM_RX_0:
+		case IDX_SEPTENARY_TDM_TX_0:
+			return TDM_SEP;
+		case IDX_HSIF0_TDM_RX_0:
+		case IDX_HSIF0_TDM_TX_0:
+			return TDM_HSIF0;
+		case IDX_HSIF1_TDM_RX_0:
+		case IDX_HSIF1_TDM_TX_0:
+			return TDM_HSIF1;
+		case IDX_HSIF2_TDM_RX_0:
+		case IDX_HSIF2_TDM_TX_0:
+                        return TDM_HSIF2;
+		case IDX_HSIF3_TDM_RX_0:
+		case IDX_HSIF3_TDM_TX_0:
+                        return TDM_HSIF3;
+		case IDX_HSIF4_TDM_RX_0:
+		case IDX_HSIF4_TDM_TX_0:
+                        return TDM_HSIF4;
+
+		default: return -EINVAL;
+	}
+}
+
+static int msm_set_pinctrl(struct msm_pinctrl_info *pinctrl_info,
+                                enum pinctrl_pin_state new_state)
+{
+	int ret = 0;
+	int curr_state = 0;
+
+	if (pinctrl_info == NULL) {
+		pr_err("%s: pinctrl info is NULL\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	if (pinctrl_info->pinctrl == NULL) {
+		pr_err("%s: pinctrl handle is NULL\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	curr_state = pinctrl_info->curr_state;
+	pinctrl_info->curr_state = new_state;
+	pr_debug("%s: curr_state = %s new_state = %s\n", __func__,
+                 pin_states[curr_state], pin_states[pinctrl_info->curr_state]);
+
+	if (curr_state == pinctrl_info->curr_state) {
+		pr_err("%s: pin already in same state\n", __func__);
+		goto err;
+	}
+
+	if (curr_state != STATE_SLEEP &&
+		pinctrl_info->curr_state != STATE_SLEEP) {
+		pr_err("%s: pin state is already active, cannot switch\n", __func__);
+		ret = -EIO;
+		goto err;
+	}
+	switch (pinctrl_info->curr_state) {
+	case STATE_ACTIVE:
+		ret = pinctrl_select_state(pinctrl_info->pinctrl,
+                                        pinctrl_info->active);
+		if (ret) {
+			pr_err("%s: state select to active failed with %d\n",
+                                __func__, ret);
+			ret = -EIO;
+			goto err;
+		}
+		break;
+	case STATE_SLEEP:
+		ret = pinctrl_select_state(pinctrl_info->pinctrl,
+                                        pinctrl_info->sleep);
+		if (ret) {
+			pr_err("%s: state select to sleep failed with %d\n",
+                                __func__, ret);
+			ret = -EIO;
+			goto err;
+		}
+		break;
+	default:
+		pr_err("%s: pin state is invalid\n", __func__);
+		return -EINVAL;
+	}
+
+err:
+	return ret;
+}
+
+static int tdm_snd_startup(struct snd_pcm_substream *substream)
+{
+	int ret = 0;
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_dai_link *dai_link = rtd->dai_link;
+	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct tdm_conf *intf_conf = NULL;
+	struct msm_pinctrl_info *pinctrl_info = NULL;
+	int ret_pinctrl = 0;
+	int index;
+
+	index = msm_tdm_get_intf_idx(dai_link->id);
+	if (index < 0) {
+		ret = -EINVAL;
+		pr_err("%s: DAI link id (%d) out of range\n",
+			__func__, dai_link->id);
+		goto err;
+	}
+
+        /*
+         * Mutex protection in case the same TDM
+         * interface using for both TX and RX so
+         * that the same clock won't be enable twice.
+         */
+	intf_conf = &pdata->tdm_intf_conf[index];
+	mutex_lock(&intf_conf->lock);
+	if (++intf_conf->ref_cnt == 1) {
+		pinctrl_info = &pdata->pinctrl_info[index];
+		if (pinctrl_info->pinctrl) {
+			ret_pinctrl = msm_set_pinctrl(pinctrl_info,
+                                                      STATE_ACTIVE);
+			if (ret_pinctrl)
+				pr_err("%s: TDM TLMM pinctrl set failed with %d\n",
+                                        __func__, ret_pinctrl);
+		}
+	}
+	mutex_unlock(&intf_conf->lock);
+
+err:
+	return ret;
+}
+
+static void tdm_snd_shutdown(struct snd_pcm_substream *substream)
+{
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	struct snd_soc_card *card = rtd->card;
+	struct snd_soc_dai_link *dai_link = rtd->dai_link;
+	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_pinctrl_info *pinctrl_info = NULL;
+	struct tdm_conf *intf_conf = NULL;
+	int ret_pinctrl = 0;
+	int index;
+
+	pr_debug("%s: substream = %s, stream = %d\n", __func__,
+                 substream->name, substream->stream);
+
+	index = msm_tdm_get_intf_idx(dai_link->id);
+	if (index < 0) {
+		pr_err("%s: DAI link id (%d) out of range\n",
+                        __func__, dai_link->id);
+		return;
+	}
+
+	intf_conf = &pdata->tdm_intf_conf[index];
+	mutex_lock(&intf_conf->lock);
+	if (--intf_conf->ref_cnt == 0) {
+		pinctrl_info = &pdata->pinctrl_info[index];
+		if (pinctrl_info->pinctrl) {
+			ret_pinctrl = msm_set_pinctrl(pinctrl_info,
+                                                      STATE_SLEEP);
+			if (ret_pinctrl)
+                                pr_err("%s: TDM TLMM pinctrl set failed with %d\n",
+                                        __func__, ret_pinctrl);
+		}
+	}
+	mutex_unlock(&intf_conf->lock);
+}
+
+static struct snd_soc_ops tdm_be_ops = {
+	.startup = tdm_snd_startup,
+	.shutdown = tdm_snd_shutdown
+};
+
 /* Digital audio interface glue - connects codec <---> CPU */
 static struct snd_soc_dai_link msm_common_dai_links[] = {
 /* BackEnd DAI Links */
@@ -634,8 +854,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_playback = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_PRIMARY_TDM_RX_0,
 	SND_SOC_DAILINK_REG(pri_tdm_rx_0),
 },
 {
@@ -644,19 +866,22 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
-
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_PRIMARY_TDM_TX_0,
 	SND_SOC_DAILINK_REG(pri_tdm_tx_0),
 },
 {
 	.name = "SEC_TDM_RX_0",
 	.stream_name = "TDM-LPAIF-RX-SECONDARY",
 	.dpcm_playback = 1,
+        .ops = &tdm_be_ops,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_SECONDARY_TDM_RX_0,
 	SND_SOC_DAILINK_REG(sec_tdm_rx_0),
 },
 {
@@ -665,8 +890,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+        .ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+        .id = IDX_SECONDARY_TDM_TX_0,
 	SND_SOC_DAILINK_REG(sec_tdm_tx_0),
 },
 {
@@ -675,8 +902,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_playback = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_TERTIARY_TDM_RX_0,
 	SND_SOC_DAILINK_REG(tert_tdm_rx_0),
 },
 {
@@ -685,8 +914,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_TERTIARY_TDM_TX_0,
 	SND_SOC_DAILINK_REG(tert_tdm_tx_0),
 },
 {
@@ -695,8 +926,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_playback = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+        .ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+        .id = IDX_HSIF0_TDM_RX_0,
 	SND_SOC_DAILINK_REG(hs_if0_tdm_rx_0),
 },
 {
@@ -705,8 +938,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+        .ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+        .id = IDX_HSIF0_TDM_TX_0,
 	SND_SOC_DAILINK_REG(hs_if0_tdm_tx_0),
 },
 {
@@ -715,8 +950,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_playback = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+        .ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+        .id = IDX_HSIF1_TDM_RX_0,
 	SND_SOC_DAILINK_REG(hs_if1_tdm_rx_0),
 },
 {
@@ -725,8 +962,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+        .ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+        .id = IDX_HSIF1_TDM_TX_0,
 	SND_SOC_DAILINK_REG(hs_if1_tdm_tx_0),
 },
 {
@@ -735,8 +974,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_playback = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+        .ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+        .id = IDX_HSIF2_TDM_RX_0,
 	SND_SOC_DAILINK_REG(hs_if2_tdm_rx_0),
 },
 {
@@ -745,8 +986,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+        .ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+        .id = IDX_HSIF2_TDM_TX_0,
 	SND_SOC_DAILINK_REG(hs_if2_tdm_tx_0),
 },
 {
@@ -755,8 +998,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_playback = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+        .ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+        .id = IDX_HSIF3_TDM_RX_0,
 	SND_SOC_DAILINK_REG(hs_if3_tdm_rx_0),
 },
 {
@@ -765,8 +1010,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+        .ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+        .id = IDX_HSIF3_TDM_TX_0,
 	SND_SOC_DAILINK_REG(hs_if3_tdm_tx_0),
 },
 {
@@ -775,8 +1022,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_playback = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+        .ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+        .id = IDX_HSIF4_TDM_RX_0,
 	SND_SOC_DAILINK_REG(hs_if4_tdm_rx_0),
 },
 {
@@ -785,8 +1034,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+        .ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+        .id = IDX_HSIF4_TDM_TX_0,
 	SND_SOC_DAILINK_REG(hs_if4_tdm_tx_0),
 }
 };
@@ -1116,13 +1367,13 @@ static int msm_get_pinctrl(struct platform_device *pdev)
 
 		/* get all the states handles from Device Tree */
 		pinctrl_info->sleep = pinctrl_lookup_state(pinctrl,
-							"sleep");
+							"default");
 		if (IS_ERR(pinctrl_info->sleep)) {
 			pr_err("%s: could not get sleep pin state\n", __func__);
 			goto err;
 		}
 		pinctrl_info->active = pinctrl_lookup_state(pinctrl,
-							"default");
+							"active");
 		if (IS_ERR(pinctrl_info->active)) {
 			pr_err("%s: could not get active pin state\n",
 				__func__);
@@ -1131,14 +1382,14 @@ static int msm_get_pinctrl(struct platform_device *pdev)
 
 		/* Reset the TLMM pins to a sleep state */
 		ret = pinctrl_select_state(pinctrl_info->pinctrl,
-						pinctrl_info->active);
+						pinctrl_info->sleep);
 		if (ret != 0) {
 			pr_err("%s: set pin state to sleep failed with %d\n",
 				__func__, ret);
 			ret = -EIO;
 			goto err;
 		}
-		pinctrl_info->curr_state = STATE_ACTIVE;
+		pinctrl_info->curr_state = STATE_SLEEP;
 	}
 	return 0;
 
