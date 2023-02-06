@@ -697,6 +697,30 @@ static int msm_tdm_get_intf_idx(u16 id)
 	}
 }
 
+static int auto_adsp_notifier_service_cb(struct notifier_block *this,
+					 unsigned long opcode, void *ptr)
+{
+	pr_debug("%s: Service opcode 0x%lx\n", __func__, opcode);
+
+	switch (opcode) {
+	case AUDIO_NOTIFIER_SERVICE_DOWN:
+		snd_card_notify_user(SND_CARD_STATUS_OFFLINE);
+		break;
+	case AUDIO_NOTIFIER_SERVICE_UP:
+		snd_card_notify_user(SND_CARD_STATUS_ONLINE);
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block service_nb = {
+	.notifier_call  = auto_adsp_notifier_service_cb,
+	.priority = -INT_MAX,
+};
+
 static int msm_set_pinctrl(struct msm_pinctrl_info *pinctrl_info,
                                 enum pinctrl_pin_state new_state)
 {
@@ -1605,6 +1629,8 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	spdev = pdev;
 
 	snd_card_set_card_status(SND_CARD_STATUS_ONLINE);
+	ret = audio_notifier_register("auto_spf", AUDIO_NOTIFIER_ADSP_DOMAIN,
+				      &service_nb);
 
 	return 0;
 err:
