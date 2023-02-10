@@ -1765,6 +1765,12 @@ exit:
 	return 0;
 }
 
+static void raydium_setup_drm_unregister_notifier(void)
+{
+	if (active_panel && drm_panel_notifier_unregister(active_panel,
+				&g_raydium_ts->fb_notif) < 0)
+		LOGD(LOG_ERR, "[touch]%s: DRM UnRegister notifier failed!\n", __func__);
+}
 /*******************************************************************************
  * FUNCTION: raydium_setup_drm_notifier
  *
@@ -2452,7 +2458,12 @@ static int raydium_ts_probe(struct i2c_client *client,
 exit_irq_request_failed:
 #if defined(CONFIG_FB)
 	raydium_unregister_notifier();
-#endif/*end of CONFIG_FB*/
+#elif defined(CONFIG_PANEL_NOTIFIER)
+	if (active_panel)
+		panel_event_notifier_unregister(&g_raydium_ts->fb_notif);
+#elif defined(CONFIG_DRM)
+        raydium_setup_drm_unregister_notifier();
+#endif
 
 	cancel_work_sync(&g_raydium_ts->work);
 	input_unregister_device(input_dev);
