@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -705,8 +705,10 @@ static int besbev_tx_event_notify(struct notifier_block *block,
 		besbev_get_logical_addr(besbev->swr_dev);
 
 		besbev_init_reg(component, false);
+		mutex_lock(&besbev->res_lock);
 		regcache_mark_dirty(besbev->regmap);
 		regcache_sync(besbev->regmap);
+		mutex_unlock(&besbev->res_lock);
 		besbev->dev_up = true;
 		break;
 	default:
@@ -739,8 +741,10 @@ static int besbev_rx_event_notify(struct notifier_block *block,
 	case BOLERO_SLV_EVT_SSR_UP:
 		besbev_reset(besbev->dev, 0x00);
 		besbev_init_reg(component, true);
+		mutex_lock(&besbev->res_lock);
 		regcache_mark_dirty(besbev->regmap);
 		regcache_sync(besbev->regmap);
+		mutex_unlock(&besbev->res_lock);
 		besbev->dev_up = true;
 		usleep_range(20000, 20010);
 		break;
@@ -2406,6 +2410,8 @@ static int besbev_bind(struct device *dev)
 		goto err;
 	}
 
+	mutex_init(&besbev->res_lock);
+
 	besbev->regmap = devm_regmap_init_swr(besbev->swr_dev,
 						       &besbev_regmap_config);
 	if (!besbev->regmap) {
@@ -2601,6 +2607,7 @@ static void besbev_unbind(struct device *dev)
 		mutex_destroy(&besbev->micb_lock);
 		mutex_destroy(&besbev->main_bias_lock);
 	}
+	mutex_destroy(&besbev->res_lock);
 	component_unbind_all(dev, besbev);
 	dev_set_drvdata(dev, NULL);
 	kfree(pdata);

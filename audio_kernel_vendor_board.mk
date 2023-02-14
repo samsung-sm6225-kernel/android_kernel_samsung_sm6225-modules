@@ -9,7 +9,7 @@ endif
 
 ifeq ($(AUDIO_DLKM_ENABLE), true)
 ifeq ($(call is-board-platform-in-list,$(TARGET_BOARD_PLATFORM)),true)
-  ifeq ($(call is-board-platform-in-list,taro kalama bengal monaco), true)
+  ifeq ($(call is-board-platform-in-list,taro kalama bengal monaco msmnile), true)
     include vendor/qcom/opensource/audio-kernel/audio_kernel_modules.mk
   endif
   ifeq ($(ENABLE_AUDIO_LEGACY_TECHPACK),true)

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2018, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/platform_device.h>
@@ -11,9 +11,11 @@
 #include <soc/snd_event.h>
 #include <dsp/audio_notifier.h>
 
-
 #define BROADCAST_MASTER_EVENT 1
 #define BROADCAST_SUBSYSTEM_EVENT 0
+
+#define SND_EVENT_MASTER_OPS_V1 1
+#define SND_EVENT_MASTER_OPS_V2 2
 
 struct snd_event_client {
 	struct list_head node;
@@ -42,6 +44,7 @@ struct snd_event_clients {
 struct snd_master {
 	struct device *dev;
 	const struct snd_event_ops *ops;
+	const struct snd_event_ops_v2 *ops_v2;
 	void *data;
 
 	bool state;
@@ -92,20 +95,25 @@ static int check_and_update_fwk_state(int domain, bool event)
 					}
 				}
 			}
-			if (master->ops->enable) {
+			if (master->ops && master->ops->enable) {
 				ret = master->ops->enable(master->dev,
 							  master->data);
-				if (ret) {
-					dev_err_ratelimited(master->dev,
-						"%s: enable failed\n",
-						__func__);
-					goto mstr_en_failed;
-				}
+			} else if (master->ops_v2 && master->ops_v2->enable) {
+				ret = master->ops_v2->enable(master->dev,
+							  master->data, domain);
+			}
+			if (ret) {
+				dev_err_ratelimited(master->dev, "%s: enable failed\n", __func__);
+				goto mstr_en_failed;
 			}
 		} else {
-			if (master->ops->disable)
+			if (master->ops && master->ops->disable) {
 				master->ops->disable(master->dev,
 						     master->data);
+			} else if (master->ops_v2 && master->ops_v2->disable) {
+				master->ops_v2->disable(master->dev,
+						     master->data, domain);
+			}
 			for (i = 0; i < master->clients->num_clients; i++) {
 				c = master->clients->cl_arr[i].clnt;
 				if (c->ops->disable && (c->domain == domain || event))
@@ -168,6 +176,67 @@ static int snd_event_find_clients(struct snd_master *master)
 		}
 	}
 
+	return ret;
+}
+
+static int snd_event_master_register_internal(struct device *dev,
+			      const void *ops, int ops_version,
+			      struct snd_event_clients *clients,
+			      void *data)
+{
+	struct snd_master *new_master;
+	int ret = 0;
+
+	if (!dev) {
+		pr_err_ratelimited("%s: dev is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	mutex_lock(&snd_event_mutex);
+	if (master) {
+		dev_err(dev, "%s: master already allocated with %pK\n",
+			__func__, master->dev);
+		ret = -EALREADY;
+		goto exit;
+	}
+	mutex_unlock(&snd_event_mutex);
+
+	if (!clients || IS_ERR(clients)) {
+		dev_err(dev, "%s: Invalid clients ptr\n", __func__);
+		return -EINVAL;
+	}
+
+	new_master = kzalloc(sizeof(*new_master), GFP_KERNEL);
+	if (!new_master)
+		return -ENOMEM;
+
+	new_master->dev = dev;
+	if (ops_version == SND_EVENT_MASTER_OPS_V2) {
+		new_master->ops_v2 = (struct snd_event_ops_v2 *)ops;
+		new_master->ops = NULL;
+	} else {
+		new_master->ops = (struct snd_event_ops *)ops;
+		new_master->ops_v2 = NULL;
+	}
+	new_master->data = data;
+	new_master->clients = clients;
+
+	dev_dbg(dev, "adding master to SND event FW (ops %pK)\n", ops);
+
+	mutex_lock(&snd_event_mutex);
+
+	master = new_master;
+
+	ret = snd_event_find_clients(master);
+	if (ret) {
+		dev_dbg(dev, "%s: Failed to find all clients\n", __func__);
+		ret = 0;
+		goto exit;
+	}
+	master->clients_found = true;
+
+exit:
+	mutex_unlock(&snd_event_mutex);
 	return ret;
 }
 
@@ -386,56 +455,38 @@ int snd_event_master_register(struct device *dev,
 			      struct snd_event_clients *clients,
 			      void *data)
 {
-	struct snd_master *new_master;
-	int ret = 0;
-
-	if (!dev) {
-		pr_err_ratelimited("%s: dev is NULL\n", __func__);
-		return -EINVAL;
-	}
-
-	mutex_lock(&snd_event_mutex);
-	if (master) {
-		dev_err(dev, "%s: master already allocated with %pK\n",
-			__func__, master->dev);
-		ret = -EALREADY;
-		goto exit;
-	}
-	mutex_unlock(&snd_event_mutex);
-
-	if (!clients || IS_ERR(clients)) {
-		dev_err(dev, "%s: Invalid clients ptr\n", __func__);
-		return -EINVAL;
-	}
-
-	new_master = kzalloc(sizeof(*new_master), GFP_KERNEL);
-	if (!new_master)
-		return -ENOMEM;
-
-	new_master->dev = dev;
-	new_master->ops = ops;
-	new_master->data = data;
-	new_master->clients = clients;
-
-	dev_dbg(dev, "adding master to SND event FW (ops %pK)\n", ops);
-
-	mutex_lock(&snd_event_mutex);
-
-	master = new_master;
-
-	ret = snd_event_find_clients(master);
-	if (ret) {
-		dev_dbg(dev, "%s: Failed to find all clients\n", __func__);
-		ret = 0;
-		goto exit;
-	}
-	master->clients_found = true;
-
-exit:
-	mutex_unlock(&snd_event_mutex);
-	return ret;
+	return snd_event_master_register_internal(dev, ops,
+				SND_EVENT_MASTER_OPS_V1, clients, data);
 }
 EXPORT_SYMBOL(snd_event_master_register);
+
+/*
+ * snd_event_master_register_v2 - Register a master with the SND event FW
+ *
+ * @dev: Pointer to the "struct device" associated with the master
+ * @ops_v2: Pointer to the snd_event_ops_v2 struct for the master containing
+ *       callback functions which triggers for specific subsystem domain.
+ * @clients: List of clients for the master
+ * @data: Pointer to any additional data that the caller wants to get back
+ *        with callback functions
+ *
+ * Returns 0 on success or error on failure.
+ *
+ * Prerequisite:
+ *  clients list must not be empty.
+ *  All clients for the master must have to be registered by calling
+ *  snd_event_mstr_add_client() before calling this API to register a
+ *  master with SND event fwk.
+ */
+int snd_event_master_register_v2(struct device *dev,
+			      const struct snd_event_ops_v2 *ops_v2,
+			      struct snd_event_clients *clients,
+			      void *data)
+{
+	return snd_event_master_register_internal(dev, ops_v2,
+					SND_EVENT_MASTER_OPS_V2, clients, data);
+}
+EXPORT_SYMBOL(snd_event_master_register_v2);
 
 /*
  * snd_event_master_deregister - Remove a master from the SND event FW

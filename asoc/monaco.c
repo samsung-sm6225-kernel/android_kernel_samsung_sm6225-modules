@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -587,7 +587,6 @@ static int msm_wcn_init(struct snd_soc_pcm_runtime *rtd)
 }
 
 static struct snd_soc_ops msm_common_be_ops = {
-	.hw_params = msm_common_snd_hw_params,
 	.startup = msm_monaco_snd_startup,
 	.shutdown = msm_monaco_snd_shutdown,
 };
