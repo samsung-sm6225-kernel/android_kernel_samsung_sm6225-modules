@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 #ifndef _ICNSS_WLAN_H_
 #define _ICNSS_WLAN_H_
@@ -12,10 +13,6 @@
 #define IWCN_MAX_IRQ_REGISTRATIONS    32
 #define ICNSS_MAX_TIMESTAMP_LEN        32
 #define ICNSS_WLFW_MAX_BUILD_ID_LEN    128
-
-#ifndef ICNSS_API_WITH_DEV
-#define ICNSS_API_WITH_DEV
-#endif
 
 #define DEVICE_NAME_MAX		10
 enum icnss_uevent {
@@ -180,6 +177,7 @@ extern unsigned int icnss_socinfo_get_serial_number(struct device *dev);
 extern bool icnss_is_qmi_disable(struct device *dev);
 extern bool icnss_is_fw_ready(void);
 extern bool icnss_is_fw_down(void);
+extern bool icnss_is_low_power(void);
 extern bool icnss_is_rejuvenate(void);
 extern int icnss_trigger_recovery(struct device *dev);
 extern void icnss_block_shutdown(bool status);

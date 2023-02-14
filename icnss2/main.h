@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2017-2020, 2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __MAIN_H__
@@ -18,6 +19,7 @@
 #endif
 #include "wlan_firmware_service_v01.h"
 #include <linux/mailbox_client.h>
+#include <linux/timer.h>
 
 #define WCN6750_DEVICE_ID 0x6750
 #define ADRASTEA_DEVICE_ID 0xabcd
@@ -124,6 +126,9 @@ enum icnss_driver_state {
 	ICNSS_DEL_SERVER,
 	ICNSS_COLD_BOOT_CAL,
 	ICNSS_QMI_DMS_CONNECTED,
+	ICNSS_SLATE_SSR_REGISTERED,
+	ICNSS_SLATE_UP,
+	ICNSS_LOW_POWER,
 };
 
 struct ce_irq_list {
@@ -427,6 +432,8 @@ struct icnss_priv {
 	struct notifier_block modem_ssr_nb;
 	struct notifier_block wpss_ssr_nb;
 	struct notifier_block wpss_early_ssr_nb;
+	void *slate_notify_handler;
+	struct notifier_block slate_ssr_nb;
 	uint32_t diag_reg_read_addr;
 	uint32_t diag_reg_read_mem_type;
 	uint32_t diag_reg_read_len;
@@ -492,8 +499,14 @@ struct icnss_priv {
 	struct workqueue_struct *soc_update_wq;
 	unsigned long device_config;
 	bool wpss_supported;
+	u8 low_power_support;
 	bool is_rf_subtype_valid;
 	u32 rf_subtype;
+	u8 is_slate_rfa;
+	struct completion slate_boot_complete;
+	struct timer_list recovery_timer;
+	struct timer_list wpss_ssr_timer;
+	bool wpss_self_recovery_enabled;
 };
 
 struct icnss_reg_info {
@@ -521,5 +534,7 @@ int icnss_update_cpr_info(struct icnss_priv *priv);
 void icnss_add_fw_prefix_name(struct icnss_priv *priv, char *prefix_name,
 			      char *name);
 int icnss_aop_mbox_init(struct icnss_priv *priv);
+void icnss_recovery_timeout_hdlr(struct timer_list *t);
+void icnss_wpss_ssr_timeout_hdlr(struct timer_list *t);
 #endif
 

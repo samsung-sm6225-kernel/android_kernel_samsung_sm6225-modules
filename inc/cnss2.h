@@ -15,12 +15,6 @@
 #define CNSS_MAX_DEV_MEM_NUM		4
 #define CNSS_CHIP_VER_ANY		0
 
-/*
- * Temporary change for compilation, will be removed
- * after WLAN host driver switched to use new APIs
- */
-#define CNSS_API_WITH_DEV
-
 #define CNSS_SSR_DRIVER_DUMP_MAX_REGIONS 32
 
 enum cnss_bus_width_type {
@@ -94,6 +88,29 @@ enum cnss_driver_status {
 	CNSS_BUS_EVENT,
 };
 
+enum cnss_host_dump_type {
+	CNSS_HOST_WLAN_LOGS,
+	CNSS_HOST_HTC_CREDIT,
+	CNSS_HOST_WMI_TX_CMP,
+	CNSS_HOST_WMI_COMMAND_LOG,
+	CNSS_HOST_WMI_EVENT_LOG,
+	CNSS_HOST_WMI_RX_EVENT,
+	CNSS_HOST_HAL_SOC,
+	CNSS_HOST_WMI_HANG_DATA,
+	CNSS_HOST_CE_HANG_EVT,
+	CNSS_HOST_PEER_MAC_ADDR_HANG_DATA,
+	CNSS_HOST_CP_VDEV_INFO,
+	CNSS_HOST_GWLAN_LOGGING,
+	CNSS_HOST_WMI_DEBUG_LOG_INFO,
+	CNSS_HOST_HTC_CREDIT_IDX,
+	CNSS_HOST_HTC_CREDIT_LEN,
+	CNSS_HOST_WMI_TX_CMP_IDX,
+	CNSS_HOST_WMI_COMMAND_LOG_IDX,
+	CNSS_HOST_WMI_EVENT_LOG_IDX,
+	CNSS_HOST_WMI_RX_EVENT_IDX,
+	CNSS_HOST_DUMP_TYPE_MAX,
+};
+
 enum cnss_bus_event_type {
 	BUS_EVENT_PCI_LINK_DOWN = 0,
 
@@ -156,6 +173,9 @@ struct cnss_wlan_driver {
 	int (*collect_driver_dump)(struct pci_dev *pdev,
 				   struct cnss_ssr_driver_dump_entry *input_array,
 				   size_t *num_entries_loaded);
+	int (*set_therm_cdev_state)(struct pci_dev *pci_dev,
+				    unsigned long thermal_state,
+				    int tcdev_id);
 };
 
 struct cnss_ce_tgt_pipe_cfg {
@@ -330,4 +350,11 @@ extern int cnss_send_buffer_to_afcmem(struct device *dev, char *afcdb,
 extern int cnss_reset_afcmem(struct device *dev, uint8_t slotid);
 extern bool cnss_get_fw_cap(struct device *dev, enum cnss_fw_caps fw_cap);
 extern int cnss_set_wfc_mode(struct device *dev, struct cnss_wfc_cfg cfg);
+extern int cnss_thermal_cdev_register(struct device *dev,
+				      unsigned long max_state,
+				      int tcdev_id);
+extern void cnss_thermal_cdev_unregister(struct device *dev, int tcdev_id);
+extern int cnss_get_curr_therm_cdev_state(struct device *dev,
+					  unsigned long *thermal_state,
+					  int tcdev_id);
 #endif /* _NET_CNSS2_H */
