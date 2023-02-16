@@ -1163,7 +1163,47 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.ignore_pmdown_time = 1,
         .id = IDX_HSIF4_TDM_TX_0,
 	SND_SOC_DAILINK_REG(hs_if4_tdm_tx_0),
-}
+},
+{
+	.name = "QUAT_TDM_RX_0_DUMMY",
+	.stream_name = "TDM-LPAIF-RX-QUATERNARY",
+	.dpcm_playback = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(quat_tdm_rx_0_dummy),
+},
+{
+	.name = "QUAT_TDM_TX_0_DUMMY",
+	.stream_name = "TDM-LPAIF-TX-QUATERNARY",
+	.dpcm_capture = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(quat_tdm_tx_0_dummy),
+},
+{
+	.name = "QUIN_TDM_RX_0_DUMMY",
+	.stream_name = "TDM-LPAIF-RX-QUINARY",
+	.dpcm_playback = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(quin_tdm_rx_0_dummy),
+},
+{
+	.name = "QUIN_TDM_TX_0_DUMMY",
+	.stream_name = "TDM-LPAIF-TX-QUINARY",
+	.dpcm_capture = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(quin_tdm_tx_0_dummy),
+},
 };
 
 
