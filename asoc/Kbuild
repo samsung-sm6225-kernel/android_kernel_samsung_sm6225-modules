@@ -234,7 +234,8 @@ endif
 
 # for sa8255 sound card driver
 ifdef CONFIG_SND_SOC_SA8255_AUTO_SPF
-	MACHINE_OBJS += auto_spf_dummy.o
+	SPF_MACHINE_OBJS += msm_common.o
+	SPF_MACHINE_OBJS += auto_spf_dummy.o
 endif
 
 # for gvm sound card driver
@@ -339,7 +340,7 @@ obj-$(CONFIG_SND_SOC_SA525M) += machine_dlkm.o
 machine_dlkm-y := $(MACHINE_OBJS)
 
 obj-$(CONFIG_SND_SOC_SA8255_AUTO_SPF) += spf_machine_dlkm.o
-spf_machine_dlkm-y := $(MACHINE_OBJS)
+spf_machine_dlkm-y := $(SPF_MACHINE_OBJS)
 
 obj-$(CONFIG_SND_SOC_GVM_AUTO_SPF) += spf_machine_dlkm.o
 spf_machine_dlkm-y := $(SPF_MACHINE_OBJS)
