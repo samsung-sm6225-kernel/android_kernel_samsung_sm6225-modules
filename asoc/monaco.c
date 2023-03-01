@@ -1566,11 +1566,13 @@ static int msm_asoc_machine_remove(struct platform_device *pdev)
 
 	}
 	snd_event_master_deregister(&pdev->dev);
-	if(card)
+	if (card)
 		snd_soc_unregister_card(card);
 
-	pdata->cs.state_counter = SND_CARD_STATUS_OFFLINE;
-	mutex_destroy(&pdata->cs.lock);
+	if (pdata) {
+		pdata->cs.state_counter = SND_CARD_STATUS_OFFLINE;
+		mutex_destroy(&pdata->cs.lock);
+	}
 
 	return 0;
 }

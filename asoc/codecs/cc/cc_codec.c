@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -1844,12 +1844,15 @@ static int cc_action_ctl_array_put(struct snd_kcontrol *kcontrol,
 		return cc_action_set(act->act_id->id, ptr, size);
 	}
 
-	list_for_each_safe(node, next, &act_ifaces->iface->action_value_list) {
-		act_val = list_entry(node,
-				struct cc_action_value_list, list);
-		if (act_val && act_val->action_id == act->act_id->id) {
-			found = 1;
-			break;
+	if (act_ifaces->iface->action_value_list.prev &&
+		act_ifaces->iface->action_value_list.next) {
+		list_for_each_safe(node, next, &act_ifaces->iface->action_value_list) {
+			act_val = list_entry(node,
+					struct cc_action_value_list, list);
+			if (act_val && act_val->action_id == act->act_id->id) {
+				found = 1;
+				break;
+			}
 		}
 	}
 
@@ -2583,12 +2586,14 @@ static void cc_cleanup_action(struct cc_action *action)
 		action->texts = NULL;
 	}
 
-	list_for_each_safe(node, next, &action->list) {
-		act_ifaces = list_entry(node,
-					struct cc_iface_list, iface_list);
-		list_del(node);
-		if (act_ifaces)
-			kfree(act_ifaces);
+	if (action->list.prev && action->list.next) {
+		list_for_each_safe(node, next, &action->list) {
+			act_ifaces = list_entry(node,
+						struct cc_iface_list, iface_list);
+			list_del(node);
+			if (act_ifaces)
+				kfree(act_ifaces);
+		}
 	}
 
 }
@@ -2613,12 +2618,14 @@ static void cc_cleanup_element(struct cc_element *element)
 		element->texts = NULL;
 	}
 
-	list_for_each_safe(node, next, &element->list) {
-		elem_ifaces = list_entry(node,
-					struct cc_iface_list, iface_list);
-		list_del(node);
-		if (elem_ifaces)
-			kfree(elem_ifaces);
+	if (element->list.prev && element->list.next) {
+		list_for_each_safe(node, next, &element->list) {
+			elem_ifaces = list_entry(node,
+						struct cc_iface_list, iface_list);
+			list_del(node);
+			if (elem_ifaces)
+				kfree(elem_ifaces);
+		}
 	}
 
 	element->elem_id = NULL;
