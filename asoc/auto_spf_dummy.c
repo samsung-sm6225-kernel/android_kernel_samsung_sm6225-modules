@@ -35,6 +35,7 @@
 
 
 #define DRV_NAME "spf-asoc-snd"
+#define DRV_PINCTRL_NAME "audio-pcm-pinctrl"
 
 #define __CHIPSET__ "SA8xx5 "
 #define MSM_DAILINK_NAME(name) (__CHIPSET__#name)
@@ -1315,8 +1316,6 @@ err:
 }
 
 static const struct of_device_id asoc_machine_of_match[]  = {
-	{ .compatible = "qcom,msm-pcm-pinctrl",
-	  .data = ""},
 	{ .compatible = "qcom,sa8295-asoc-snd-adp-star",
 	  .data = "adp_star_codec"},
 	{ .compatible = "qcom,sa8155-asoc-snd-adp-star",
@@ -1324,6 +1323,11 @@ static const struct of_device_id asoc_machine_of_match[]  = {
 	{ .compatible = "qcom,sa8255-asoc-snd-adp-star",
 	  .data = "adp_star_codec"},
 	{},
+};
+
+static const struct of_device_id audio_pinctrl_dummy_match[] = {
+	{ .compatible = "qcom,msm-pcm-pinctrl" },
+	{ },
 };
 
 static struct snd_soc_dai_link msm_auto_dai_links[
@@ -1677,11 +1681,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	if (strstr(match->compatible, "pcm-pinctrl")) {
-		dev_err(&pdev->dev, "%s: pcm-pinctrl\n", __func__);
-		return 0;
-	}
-
 	if (!pdev->dev.of_node) {
 		dev_err(&pdev->dev, "No platform supplied from device tree\n");
 		return -EINVAL;
@@ -1795,6 +1794,29 @@ static int msm_asoc_machine_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int audio_pinctrl_dummy_probe(struct platform_device *pdev)
+{
+	pr_err("%s\n", __func__);
+	return 0;
+}
+
+static int audio_pinctrl_dummy_remove(struct platform_device *pdev)
+{
+	pr_err("%s\n", __func__);
+	return 0;
+}
+
+static struct platform_driver audio_pinctrl_dummy_driver = {
+	.driver = {
+		.name = DRV_PINCTRL_NAME,
+		.owner = THIS_MODULE,
+		.of_match_table = audio_pinctrl_dummy_match,
+		.suppress_bind_attrs = true,
+	},
+	.probe = audio_pinctrl_dummy_probe,
+	.remove = audio_pinctrl_dummy_remove,
+};
+
 static struct platform_driver asoc_machine_driver = {
 	.driver = {
 		.name = DRV_NAME,
@@ -1811,12 +1833,14 @@ int __init auto_spf_init(void)
 {
 	pr_err("%s\n", __func__);
 	snd_card_sysfs_init();
+	platform_driver_register(&audio_pinctrl_dummy_driver);
 	return platform_driver_register(&asoc_machine_driver);
 }
 
 void auto_spf_exit(void)
 {
 	pr_err("%s\n", __func__);
+	platform_driver_unregister(&audio_pinctrl_dummy_driver);
 	platform_driver_unregister(&asoc_machine_driver);
 }
 
@@ -1826,4 +1850,6 @@ module_exit(auto_spf_exit);
 MODULE_DESCRIPTION("ALSA SoC Machine Driver for SPF");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:" DRV_NAME);
+MODULE_ALIAS("platform:" DRV_PINCTRL_NAME);
 MODULE_DEVICE_TABLE(of, asoc_machine_of_match);
+MODULE_DEVICE_TABLE(of, audio_pinctrl_dummy_match);
