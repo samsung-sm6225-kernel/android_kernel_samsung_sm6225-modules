@@ -168,6 +168,16 @@ include $(DLKM_DIR)/Build_external_kernelmodule.mk
 ###########################################################
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
+LOCAL_MODULE              := coupled_ssr_dlkm.ko
+LOCAL_MODULE_KBUILD_NAME  := dsp/coupled_ssr_dlkm.ko
+LOCAL_MODULE_TAGS         := optional
+LOCAL_MODULE_DEBUG_ENABLE := true
+LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
+include $(DLKM_DIR)/Build_external_kernelmodule.mk
+
+###########################################################
+include $(CLEAR_VARS)
+LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
 LOCAL_MODULE              := audio_prm_dlkm.ko
 LOCAL_MODULE_KBUILD_NAME  := dsp/audio_prm_dlkm.ko
 LOCAL_MODULE_TAGS         := optional

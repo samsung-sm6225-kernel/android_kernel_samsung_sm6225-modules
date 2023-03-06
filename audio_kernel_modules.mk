@@ -126,7 +126,8 @@ AUDIO_KERNEL_MODULES += $(KERNEL_MODULES_OUT)/q6_notifier_dlkm.ko\
         $(KERNEL_MODULES_OUT)/snd_event_dlkm.ko \
         $(KERNEL_MODULES_OUT)/stub_dlkm.ko \
         $(KERNEL_MODULES_OUT)/machine_dlkm.ko \
-        $(KERNEL_MODULES_OUT)/q6_pdr_dlkm.ko
+        $(KERNEL_MODULES_OUT)/q6_pdr_dlkm.ko \
+        $(KERNEL_MODULES_OUT)/coupled_ssr_dlkm.ko
 endif   #msmnile
 endif
 endif
