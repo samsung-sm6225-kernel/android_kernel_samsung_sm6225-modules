@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -34,21 +34,24 @@ static void cc_pktzr_recv_cb(void *data, size_t size)
 	msg_pkt = (struct cc_pktzr_pkt_t *)data;
 
 	spin_lock(&ppriv->cc_pktzr_lock);
-	list_for_each_entry_safe(pnode, tmp, &ppriv->cc_list, list) {
-		if (pnode && (pnode->token == msg_pkt->pkt_hdr.token)) {
-			pnode->resp_payload = kzalloc(size,
-							 GFP_ATOMIC);
-			if (!pnode->resp_payload)
-			{
+
+	if (ppriv->cc_list.prev && ppriv->cc_list.next) {
+		list_for_each_entry_safe(pnode, tmp, &ppriv->cc_list, list) {
+			if (pnode && (pnode->token == msg_pkt->pkt_hdr.token)) {
+				pnode->resp_payload = kzalloc(size,
+								GFP_ATOMIC);
+				if (!pnode->resp_payload)
+				{
+					spin_unlock(&ppriv->cc_pktzr_lock);
+					return;
+				}
+				memcpy(pnode->resp_payload, msg_pkt->payload,
+							size);
+				pnode->resp_size = size;
+				complete(&pnode->thread_complete);
 				spin_unlock(&ppriv->cc_pktzr_lock);
 				return;
 			}
-			memcpy(pnode->resp_payload, msg_pkt->payload,
-						size);
-			pnode->resp_size = size;
-			complete(&pnode->thread_complete);
-			spin_unlock(&ppriv->cc_pktzr_lock);
-			return;
 		}
 	}
 	spin_unlock(&ppriv->cc_pktzr_lock);
@@ -132,17 +135,20 @@ int cc_pktzr_send_packet(uint32_t opcode, void *req_payload, size_t req_size,
 
 	spin_lock(&ppriv->cc_pktzr_lock);
 	found = 0;
-	list_for_each_entry_safe(pnode, tmp, &ppriv->cc_list, list) {
-		if (pnode && (pnode->token == msg_pkt->pkt_hdr.token)) {
-			found = 1;
-			*resp_payload = pnode->resp_payload;
-			*resp_size = pnode->resp_size;
-			list_del(&pnode->list);
-			kfree(pnode);
-			pnode = NULL;
-			kfree(msg_pkt);
-			msg_pkt = NULL;
-			break;
+
+	if (ppriv->cc_list.prev && ppriv->cc_list.next) {
+		list_for_each_entry_safe(pnode, tmp, &ppriv->cc_list, list) {
+			if (pnode && (pnode->token == msg_pkt->pkt_hdr.token)) {
+				found = 1;
+				*resp_payload = pnode->resp_payload;
+				*resp_size = pnode->resp_size;
+				list_del(&pnode->list);
+				kfree(pnode);
+				pnode = NULL;
+				kfree(msg_pkt);
+				msg_pkt = NULL;
+				break;
+			}
 		}
 	}
 
