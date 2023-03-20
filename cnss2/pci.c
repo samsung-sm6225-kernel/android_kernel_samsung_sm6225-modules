@@ -35,13 +35,14 @@
 
 #define PCI_DMA_MASK_32_BIT		DMA_BIT_MASK(32)
 #define PCI_DMA_MASK_36_BIT		DMA_BIT_MASK(36)
-#define PCI_DMA_MASK_64_BIT		DMA_BIT_MASK(64)
+#define PCI_DMA_MASK_64_BIT		~0ULL
 
 #define MHI_NODE_NAME			"qcom,mhi"
 #define MHI_MSI_NAME			"MHI"
 
 #define QCA6390_PATH_PREFIX		"qca6390/"
 #define QCA6490_PATH_PREFIX		"qca6490/"
+#define QCN7605_PATH_PREFIX             "qcn7605/"
 #define KIWI_PATH_PREFIX		"kiwi/"
 #define MANGO_PATH_PREFIX		"mango/"
 #define PEACH_PATH_PREFIX		"peach/"
@@ -248,6 +249,93 @@ static const struct mhi_channel_config cnss_mhi_channels[] = {
 #endif
 };
 
+static const struct mhi_channel_config cnss_mhi_channels_genoa[] = {
+	{
+		.num = 0,
+		.name = "LOOPBACK",
+		.num_elements = 32,
+		.event_ring = 1,
+		.dir = DMA_TO_DEVICE,
+		.ee_mask = 0x4,
+		.pollcfg = 0,
+		.doorbell = MHI_DB_BRST_DISABLE,
+		.lpm_notify = false,
+		.offload_channel = false,
+		.doorbell_mode_switch = false,
+		.auto_queue = false,
+	},
+	{
+		.num = 1,
+		.name = "LOOPBACK",
+		.num_elements = 32,
+		.event_ring = 1,
+		.dir = DMA_FROM_DEVICE,
+		.ee_mask = 0x4,
+		.pollcfg = 0,
+		.doorbell = MHI_DB_BRST_DISABLE,
+		.lpm_notify = false,
+		.offload_channel = false,
+		.doorbell_mode_switch = false,
+		.auto_queue = false,
+	},
+	{
+		.num = 4,
+		.name = "DIAG",
+		.num_elements = 64,
+		.event_ring = 1,
+		.dir = DMA_TO_DEVICE,
+		.ee_mask = 0x4,
+		.pollcfg = 0,
+		.doorbell = MHI_DB_BRST_DISABLE,
+		.lpm_notify = false,
+		.offload_channel = false,
+		.doorbell_mode_switch = false,
+		.auto_queue = false,
+	},
+	{
+		.num = 5,
+		.name = "DIAG",
+		.num_elements = 64,
+		.event_ring = 1,
+		.dir = DMA_FROM_DEVICE,
+		.ee_mask = 0x4,
+		.pollcfg = 0,
+		.doorbell = MHI_DB_BRST_DISABLE,
+		.lpm_notify = false,
+		.offload_channel = false,
+		.doorbell_mode_switch = false,
+		.auto_queue = false,
+	},
+	{
+		.num = 16,
+		.name = "IPCR",
+		.num_elements = 64,
+		.event_ring = 1,
+		.dir = DMA_TO_DEVICE,
+		.ee_mask = 0x4,
+		.pollcfg = 0,
+		.doorbell = MHI_DB_BRST_DISABLE,
+		.lpm_notify = false,
+		.offload_channel = false,
+		.doorbell_mode_switch = false,
+		.auto_queue = false,
+	},
+	{
+		.num = 17,
+		.name = "IPCR",
+		.num_elements = 64,
+		.event_ring = 1,
+		.dir = DMA_FROM_DEVICE,
+		.ee_mask = 0x4,
+		.pollcfg = 0,
+		.doorbell = MHI_DB_BRST_DISABLE,
+		.lpm_notify = false,
+		.offload_channel = false,
+		.doorbell_mode_switch = false,
+		.auto_queue = true,
+	},
+};
+
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0))
 static struct mhi_event_config cnss_mhi_events[] = {
 #else
@@ -324,6 +412,20 @@ static const struct mhi_controller_config cnss_mhi_config_default = {
 	.num_events = ARRAY_SIZE(cnss_mhi_events),
 	.event_cfg = cnss_mhi_events,
 	.m2_no_db = true,
+};
+
+static const struct mhi_controller_config cnss_mhi_config_genoa = {
+	.max_channels = 32,
+	.timeout_ms = 10000,
+	.use_bounce_buf = false,
+	.buf_len = 0x8000,
+	.num_channels = ARRAY_SIZE(cnss_mhi_channels_genoa),
+	.ch_cfg = cnss_mhi_channels_genoa,
+	.num_events = ARRAY_SIZE(cnss_mhi_events) -
+		CNSS_MHI_SATELLITE_EVT_COUNT,
+	.event_cfg = cnss_mhi_events,
+	.m2_no_db = true,
+	.bhie_offset = 0x0324,
 };
 
 static const struct mhi_controller_config cnss_mhi_config_no_satellite = {
@@ -672,6 +774,7 @@ static struct cnss_print_optimize print_optimize;
 
 static int cnss_pci_update_fw_name(struct cnss_pci_data *pci_priv);
 static void cnss_pci_suspend_pwroff(struct pci_dev *pci_dev);
+static bool cnss_should_suspend_pwroff(struct pci_dev *pci_dev);
 
 
 #if IS_ENABLED(CONFIG_MHI_BUS_MISC)
@@ -831,6 +934,9 @@ static void cnss_pci_select_window(struct cnss_pci_data *pci_priv, u32 offset)
 		writel_relaxed(window_enable, pci_priv->bar +
 			       QCA6390_PCIE_REMAP_BAR_CTRL_OFFSET);
 	}
+
+	if (plat_priv->device_id == QCN7605_DEVICE_ID)
+		window_enable = QCN7605_WINDOW_ENABLE_BIT | window;
 
 	if (window != pci_priv->remap_window) {
 		pci_priv->remap_window = window;
@@ -1815,6 +1921,18 @@ static void cnss_pci_set_mhi_state_bit(struct cnss_pci_data *pci_priv,
 	}
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0))
+static int cnss_mhi_pm_force_resume(struct cnss_pci_data *pci_priv)
+{
+	return mhi_pm_resume_force(pci_priv->mhi_ctrl);
+}
+#else
+static int cnss_mhi_pm_force_resume(struct cnss_pci_data *pci_priv)
+{
+	return mhi_pm_resume(pci_priv->mhi_ctrl);
+}
+#endif
+
 static int cnss_pci_set_mhi_state(struct cnss_pci_data *pci_priv,
 				  enum cnss_mhi_state mhi_state)
 {
@@ -1887,7 +2005,10 @@ retry_mhi_suspend:
 			ret = cnss_mhi_pm_fast_resume(pci_priv, true);
 			cnss_pci_allow_l1(&pci_priv->pci_dev->dev);
 		} else {
-			ret = mhi_pm_resume(pci_priv->mhi_ctrl);
+			if (pci_priv->device_id == QCA6390_DEVICE_ID)
+				ret = cnss_mhi_pm_force_resume(pci_priv);
+			else
+				ret = mhi_pm_resume(pci_priv->mhi_ctrl);
 		}
 		mutex_unlock(&pci_priv->mhi_ctrl->pm_mutex);
 		break;
@@ -3025,7 +3146,9 @@ static int cnss_qca6290_shutdown(struct cnss_pci_data *pci_priv)
 	    test_bit(CNSS_DEV_ERR_NOTIFY, &plat_priv->driver_state)) {
 		del_timer(&pci_priv->dev_rddm_timer);
 		cnss_pci_collect_dump_info(pci_priv, false);
-		CNSS_ASSERT(0);
+
+		if (!plat_priv->recovery_enabled)
+			CNSS_ASSERT(0);
 	}
 
 	if (!cnss_is_device_powered_on(plat_priv)) {
@@ -3118,6 +3241,7 @@ int cnss_pci_dev_powerup(struct cnss_pci_data *pci_priv)
 		break;
 	case QCA6290_DEVICE_ID:
 	case QCA6390_DEVICE_ID:
+	case QCN7605_DEVICE_ID:
 	case QCA6490_DEVICE_ID:
 	case KIWI_DEVICE_ID:
 	case MANGO_DEVICE_ID:
@@ -3148,6 +3272,7 @@ int cnss_pci_dev_shutdown(struct cnss_pci_data *pci_priv)
 		break;
 	case QCA6290_DEVICE_ID:
 	case QCA6390_DEVICE_ID:
+	case QCN7605_DEVICE_ID:
 	case QCA6490_DEVICE_ID:
 	case KIWI_DEVICE_ID:
 	case MANGO_DEVICE_ID:
@@ -3178,6 +3303,7 @@ int cnss_pci_dev_crash_shutdown(struct cnss_pci_data *pci_priv)
 		break;
 	case QCA6290_DEVICE_ID:
 	case QCA6390_DEVICE_ID:
+	case QCN7605_DEVICE_ID:
 	case QCA6490_DEVICE_ID:
 	case KIWI_DEVICE_ID:
 	case MANGO_DEVICE_ID:
@@ -3208,6 +3334,7 @@ int cnss_pci_dev_ramdump(struct cnss_pci_data *pci_priv)
 		break;
 	case QCA6290_DEVICE_ID:
 	case QCA6390_DEVICE_ID:
+	case QCN7605_DEVICE_ID:
 	case QCA6490_DEVICE_ID:
 	case KIWI_DEVICE_ID:
 	case MANGO_DEVICE_ID:
@@ -3610,7 +3737,8 @@ out:
 static int cnss_pci_suspend(struct device *dev)
 {
 	int ret = 0;
-	struct cnss_pci_data *pci_priv = cnss_get_pci_priv(to_pci_dev(dev));
+	struct pci_dev *pci_dev = to_pci_dev(dev);
+	struct cnss_pci_data *pci_priv = cnss_get_pci_priv(pci_dev);
 	struct cnss_plat_data *plat_priv;
 
 	if (!pci_priv)
@@ -3622,6 +3750,25 @@ static int cnss_pci_suspend(struct device *dev)
 
 	if (!cnss_is_device_powered_on(plat_priv))
 		goto out;
+
+	/* No mhi state bit set if only finish pcie enumeration,
+	 * so test_bit is not applicable to check if it is INIT state.
+	 */
+	if (pci_priv->mhi_state == CNSS_MHI_INIT) {
+		bool suspend = cnss_should_suspend_pwroff(pci_dev);
+
+		/* Do PCI link suspend and power off in the LPM case
+		 * if chipset didn't do that after pcie enumeration.
+		 */
+		if (!suspend) {
+			ret = cnss_suspend_pci_link(pci_priv);
+			if (ret)
+				cnss_pr_err("Failed to suspend PCI link, err = %d\n",
+					    ret);
+			cnss_power_off_device(plat_priv);
+			goto out;
+		}
+	}
 
 	if (!test_bit(DISABLE_DRV, &plat_priv->ctrl_params.quirks) &&
 	    pci_priv->drv_supported) {
@@ -4798,6 +4945,19 @@ int cnss_get_soc_info(struct device *dev, struct cnss_soc_info *info)
 }
 EXPORT_SYMBOL(cnss_get_soc_info);
 
+int cnss_pci_get_user_msi_assignment(struct cnss_pci_data *pci_priv,
+				     char *user_name,
+				     int *num_vectors,
+				     u32 *user_base_data,
+				     u32 *base_vector)
+{
+	return cnss_get_user_msi_assignment(&pci_priv->pci_dev->dev,
+					    user_name,
+					    num_vectors,
+					    user_base_data,
+					    base_vector);
+}
+
 static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 {
 	int ret = 0;
@@ -5035,6 +5195,9 @@ static int cnss_pci_enable_bus(struct cnss_pci_data *pci_priv)
 	case MANGO_DEVICE_ID:
 	case PEACH_DEVICE_ID:
 		pci_priv->dma_bit_mask = PCI_DMA_MASK_36_BIT;
+		break;
+	case QCN7605_DEVICE_ID:
+		pci_priv->dma_bit_mask = PCI_DMA_MASK_64_BIT;
 		break;
 	default:
 		pci_priv->dma_bit_mask = PCI_DMA_MASK_32_BIT;
@@ -5667,6 +5830,10 @@ void cnss_pci_add_fw_prefix_name(struct cnss_pci_data *pci_priv,
 	}
 
 	switch (pci_priv->device_id) {
+	case QCN7605_DEVICE_ID:
+		scnprintf(prefix_name, MAX_FIRMWARE_NAME_LEN,
+			  QCN7605_PATH_PREFIX "%s", name);
+		break;
 	case QCA6390_DEVICE_ID:
 		scnprintf(prefix_name, MAX_FIRMWARE_NAME_LEN,
 			  QCA6390_PATH_PREFIX "%s", name);
@@ -6081,6 +6248,21 @@ exit:
 	return ret;
 }
 
+static bool cnss_is_tme_supported(struct cnss_pci_data *pci_priv)
+{
+	if (!pci_priv) {
+		cnss_pr_dbg("pci_priv is NULL");
+		return false;
+	}
+
+	switch (pci_priv->device_id) {
+	case PEACH_DEVICE_ID:
+		return true;
+	default:
+		return false;
+	}
+}
+
 static int cnss_pci_register_mhi(struct cnss_pci_data *pci_priv)
 {
 	int ret = 0;
@@ -6145,7 +6327,12 @@ static int cnss_pci_register_mhi(struct cnss_pci_data *pci_priv)
 	mhi_ctrl->rddm_size = pci_priv->plat_priv->ramdump_info_v2.ramdump_size;
 	if (!mhi_ctrl->rddm_size)
 		mhi_ctrl->rddm_size = RAMDUMP_SIZE_DEFAULT;
-	mhi_ctrl->sbl_size = SZ_512K;
+
+	if (plat_priv->device_id == QCN7605_DEVICE_ID)
+		mhi_ctrl->sbl_size = SZ_256K;
+	else
+		mhi_ctrl->sbl_size = SZ_512K;
+
 	mhi_ctrl->seg_len = SZ_512K;
 	mhi_ctrl->fbc_download = true;
 
@@ -6155,9 +6342,15 @@ static int cnss_pci_register_mhi(struct cnss_pci_data *pci_priv)
 
 	/* Satellite config only supported on KIWI V2 and later chipset */
 	if (plat_priv->device_id <= QCA6490_DEVICE_ID ||
-	    (plat_priv->device_id == KIWI_DEVICE_ID &&
-	     plat_priv->device_version.major_version == 1))
-		cnss_mhi_config = &cnss_mhi_config_no_satellite;
+			(plat_priv->device_id == KIWI_DEVICE_ID &&
+			 plat_priv->device_version.major_version == 1)) {
+		if (plat_priv->device_id == QCN7605_DEVICE_ID)
+			cnss_mhi_config = &cnss_mhi_config_genoa;
+		else
+			cnss_mhi_config = &cnss_mhi_config_no_satellite;
+	}
+
+	mhi_ctrl->tme_supported_image = cnss_is_tme_supported(pci_priv);
 
 	ret = mhi_register_controller(mhi_ctrl, cnss_mhi_config);
 	if (ret) {
@@ -6580,6 +6773,7 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 		break;
 	case QCA6290_DEVICE_ID:
 	case QCA6390_DEVICE_ID:
+	case QCN7605_DEVICE_ID:
 	case QCA6490_DEVICE_ID:
 	case KIWI_DEVICE_ID:
 	case MANGO_DEVICE_ID:
@@ -6653,6 +6847,7 @@ static void cnss_pci_remove(struct pci_dev *pci_dev)
 	switch (pci_dev->device) {
 	case QCA6290_DEVICE_ID:
 	case QCA6390_DEVICE_ID:
+	case QCN7605_DEVICE_ID:
 	case QCA6490_DEVICE_ID:
 	case KIWI_DEVICE_ID:
 	case MANGO_DEVICE_ID:
@@ -6683,6 +6878,7 @@ static const struct pci_device_id cnss_pci_id_table[] = {
 	{ QCA6174_VENDOR_ID, QCA6174_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
 	{ QCA6290_VENDOR_ID, QCA6290_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
 	{ QCA6390_VENDOR_ID, QCA6390_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
+	{ QCN7605_VENDOR_ID, QCN7605_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
 	{ QCA6490_VENDOR_ID, QCA6490_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
 	{ KIWI_VENDOR_ID, KIWI_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
 	{ MANGO_VENDOR_ID, MANGO_DEVICE_ID, PCI_ANY_ID, PCI_ANY_ID },
