@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/clk.h>
@@ -93,10 +93,6 @@ struct msm_asoc_mach_data {
 	u32 wsa_max_devs;
 	u16 prim_mi2s_mode;
 	struct device_node *prim_master_p;
-	void __iomem *lpaif_pri_muxsel_virt_addr;
-	void __iomem *lpaif_sec_muxsel_virt_addr;
-	void __iomem *lpass_mux_spkr_ctl_virt_addr;
-	void __iomem *lpass_mux_mic_ctl_virt_addr;
 };
 
 static bool is_initial_boot;
@@ -268,36 +264,25 @@ static int sdx_mi2s_startup(struct snd_pcm_substream *substream)
 
 	pdata->prim_mi2s_mode = sdx_mi2s_mode;
 	if (atomic_inc_return(&mi2s_ref_count) == 1) {
-		if (pdata->lpaif_pri_muxsel_virt_addr != NULL) {
+		ret = audio_prm_set_lpass_core_clk_req( NULL, 1, 1);
+		if (ret < 0) {
+			dev_err(card->dev,"%s:set lpass core clk failed ret: %d\n",
+			__func__, ret);
+			ret = -EINVAL;
+			goto done;
+		}
 
-			ret = audio_prm_set_lpass_core_clk_req( NULL, 1, 1);
-			if (ret < 0) {
-				dev_err(card->dev,
-				"%s:set lpass core clk failed ret: %d\n",
-				__func__, ret);
-				ret = -EINVAL;
-				goto done;
-			}
+		if (pdata->prim_mi2s_mode == 1)
+			ret = audio_prm_set_rsc_hw_csr_update((LPAIF_OFFSET + 0x2004),
+			0xffff,PRI_TLMM_CLKS_EN_MASTER);
+		else
+			ret = audio_prm_set_rsc_hw_csr_update((LPAIF_OFFSET + 0x2004),
+			0xffff,PRI_TLMM_CLKS_EN_SLAVE);
 
-			iowrite32(I2S_SEL << I2S_PCM_SEL_OFFSET,
-				  pdata->lpaif_pri_muxsel_virt_addr);
-			if (pdata->lpass_mux_spkr_ctl_virt_addr != NULL) {
-				if (pdata->prim_mi2s_mode == 1)
-					iowrite32(PRI_TLMM_CLKS_EN_MASTER,
-					pdata->lpass_mux_spkr_ctl_virt_addr);
-				else
-					iowrite32(PRI_TLMM_CLKS_EN_SLAVE,
-					pdata->lpass_mux_spkr_ctl_virt_addr);
-			} else {
-				dev_err(card->dev, "%s: mux spkr ctl virt addr is NULL\n",
-					__func__);
-
-				ret = -EINVAL;
-				goto done;
-			}
-		} else {
-			dev_err(card->dev, "%s lpaif_pri_muxsel_virt_addr is NULL\n",
-				__func__);
+		if (ret < 0) {
+			dev_err(card->dev,
+			"%s:set hw csr update failed ret: %d\n",
+			__func__, ret);
 			ret = -EINVAL;
 			goto done;
 		}
@@ -1285,22 +1270,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	pdata->prim_master_p = of_parse_phandle(pdev->dev.of_node,
 						"qcom,prim_mi2s_master",
 						0);
-
-	pdata->lpaif_pri_muxsel_virt_addr = ioremap(LPAIF_PRI_MODE_MUXSEL, 4);
-	if (pdata->lpaif_pri_muxsel_virt_addr == NULL) {
-		pr_err("%s Pri muxsel virt addr is null\n", __func__);
-
-		ret = -EINVAL;
-		goto err;
-	}
-	pdata->lpass_mux_spkr_ctl_virt_addr =
-				ioremap(LPASS_CSR_GP_IO_MUX_SPKR_CTL, 4);
-	if (pdata->lpass_mux_spkr_ctl_virt_addr == NULL) {
-		pr_err("%s lpass spkr ctl virt addr is null\n", __func__);
-
-		ret = -EINVAL;
-		goto err1;
-	}
 	atomic_set(&mi2s_ref_count, 0);
 #ifndef CONFIG_WCD934X_I2S
 	/* Register LPASS audio hw vote */
@@ -1325,10 +1294,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	/* Add QoS request for audio tasks */
 	msm_audio_add_qos_request();
 	return 0;
-err1:
-	iounmap(pdata->lpass_mux_spkr_ctl_virt_addr);
 err:
-	iounmap(pdata->lpaif_pri_muxsel_virt_addr);
 	devm_kfree(&pdev->dev, pdata);
 	return ret;
 }

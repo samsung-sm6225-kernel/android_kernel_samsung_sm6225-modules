@@ -35,70 +35,14 @@
 
 
 #define DRV_NAME "spf-asoc-snd"
+#define DRV_PINCTRL_NAME "audio-pcm-pinctrl"
 
 #define __CHIPSET__ "SA8xx5 "
 #define MSM_DAILINK_NAME(name) (__CHIPSET__#name)
 
-#define DEV_NAME_STR_LEN            32
-
-#define SAMPLING_RATE_8KHZ      8000
-#define SAMPLING_RATE_11P025KHZ 11025
-#define SAMPLING_RATE_16KHZ     16000
-#define SAMPLING_RATE_22P05KHZ  22050
-#define SAMPLING_RATE_32KHZ     32000
-#define SAMPLING_RATE_44P1KHZ   44100
-#define SAMPLING_RATE_48KHZ     48000
-#define SAMPLING_RATE_88P2KHZ   88200
-#define SAMPLING_RATE_96KHZ     96000
-#define SAMPLING_RATE_176P4KHZ  176400
-#define SAMPLING_RATE_192KHZ    192000
-#define SAMPLING_RATE_352P8KHZ  352800
-#define SAMPLING_RATE_384KHZ    384000
-
-
-enum {
-	PRIM_MI2S = 0,
-	SEC_MI2S,
-	TERT_MI2S,
-	QUAT_MI2S,
-	QUIN_MI2S,
-	MI2S_MAX,
-};
-
-enum {
-	PRIM_AUX_PCM = 0,
-	SEC_AUX_PCM,
-	TERT_AUX_PCM,
-	QUAT_AUX_PCM,
-	QUIN_AUX_PCM,
-	AUX_PCM_MAX,
-};
-
-struct mi2s_conf {
-	struct mutex lock;
-	u32 ref_cnt;
-	u32 msm_is_mi2s_master;
-};
-
-struct dev_config {
-	u32 sample_rate;
-	u32 bit_format;
-	u32 channels;
-};
-
-enum {
-	DP_RX_IDX = 0,
-	EXT_DISP_RX_IDX_MAX,
-};
-
 enum pinctrl_pin_state {
 	STATE_SLEEP = 0, /* All pins are in sleep state */
 	STATE_ACTIVE,  /* TDM = active */
-};
-
-struct msm_wsa881x_dev_info {
-	struct device_node *of_node;
-	u32 index;
 };
 
 struct msm_pinctrl_info {
@@ -125,18 +69,6 @@ static const char *const tdm_gpio_phandle[] = {"qcom,pri-tdm-gpios",
 						};
 
 static const char *const mclk_gpio_phandle[] = { "qcom,internal-mclk1-gpios" };
-
-enum {
-	TDM_0 = 0,
-	TDM_1,
-	TDM_2,
-	TDM_3,
-	TDM_4,
-	TDM_5,
-	TDM_6,
-	TDM_7,
-	TDM_PORT_MAX,
-};
 
 enum {
 	TDM_PRI = 0,
@@ -187,11 +119,6 @@ enum {
 	MCLK_MAX,
 };
 
-struct tdm_port {
-	u32 mode;
-	u32 channel;
-};
-
 struct tdm_conf {
 	struct mutex lock;
 	u32 ref_cnt;
@@ -209,7 +136,6 @@ struct msm_asoc_mach_data {
 	struct tdm_conf tdm_intf_conf[TDM_INTERFACE_MAX];
 	struct msm_pinctrl_info pinctrl_info[TDM_INTERFACE_MAX];
 	struct msm_pinctrl_info mclk_pinctrl_info[MCLK_MAX];
-	struct mi2s_conf mi2s_intf_conf[MI2S_MAX];
 };
 
 static struct platform_device *spdev;
@@ -224,422 +150,6 @@ static struct clk_cfg internal_mclk[MCLK_MAX] = {
 		CLOCK_ROOT_DEFAULT,
 	}
 };
-
-
-/* TDM default slot config */
-struct tdm_slot_cfg {
-	u32 width;
-	u32 num;
-};
-
-static struct tdm_slot_cfg tdm_slot[TDM_INTERFACE_MAX] = {
-	/* PRI TDM */
-	{16, 16},
-	/* SEC TDM */
-	{32, 8},
-	/* TERT TDM */
-	{32, 8},
-	/* QUAT TDM */
-	{32, 16},
-	/* QUIN TDM */
-	{32, 16},
-	/* SEN TDM */
-	{16, 8},
-	/* SEP TDM */
-	{32, 8},
-	/* HSIF0 TDM */
-	{32, 16},
-	/* HSIF1 TDM */
-	{32, 16},
-	/* HSIF2 TDM */
-	{32, 16},
-	/* HSIF3 TDM */
-	{32, 16},
-	/* HSIF4 TDM */
-	{32, 16}
-};
-/*****************************************************************************
- * TO BE UPDATED: Codec/Platform specific tdm slot table
- *****************************************************************************/
-static struct tdm_slot_cfg tdm_slot_custom[TDM_INTERFACE_MAX] = {
-	/* PRI TDM */
-	{16, 16},
-	/* SEC TDM */
-	{16, 16},
-	/* TERT TDM */
-	{16, 16},
-	/* QUAT TDM */
-	{16, 16},
-	/* QUIN TDM */
-	{16, 16}
-};
-
-/* TDM default slot offset config */
-#define TDM_SLOT_OFFSET_MAX   32
-
-static unsigned int tdm_rx_slot_offset
-	[TDM_INTERFACE_MAX][TDM_PORT_MAX][TDM_SLOT_OFFSET_MAX] = {
-	{/* PRI TDM */
-		{0, 0xFFFF},
-		{2, 0xFFFF},
-		{4, 6, 0xFFFF},
-		{8, 10, 0xFFFF},
-		{12, 14, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* SEC TDM */
-		{0, 4, 0xFFFF},
-		{8, 12, 0xFFFF},
-		{16, 20, 0xFFFF},
-		{24, 28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{28, 0xFFFF},
-	},
-	{/* TERT TDM */
-		{0, 4, 8, 12, 16, 20, 0xFFFF},
-		{24, 0xFFFF},
-		{28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* QUAT TDM */
-		{0, 8, 16, 24, 32, 40, 48, 56, 0xFFFF}, /*8 CH SPKR*/
-		{4, 12, 20, 28, 36, 44, 52, 60, 0xFFFF}, /*8 CH SPKR*/
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{60, 0xFFFF},
-	},
-	{/* QUIN TDM */
-		{0, 4, 8, 12, 16, 20, 24, 28,
-			32, 36, 40, 44, 48, 52, 56, 60, 0xFFFF}, /*16 CH SPKR*/
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{60, 0xFFFF},
-	},
-	{/* SEN TDM */
-		{0, 4, 8, 12, 16, 20, 0xFFFF},
-		{24, 0xFFFF},
-		{28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* SEP TDM */
-		{0, 4, 8, 12, 16, 20, 0xFFFF},
-		{24, 0xFFFF},
-		{28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* HSIF0 TDM */
-		{0, 4, 8, 12, 16, 20, 0xFFFF},
-		{24, 0xFFFF},
-		{28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* HSIF1 TDM */
-		{0, 4, 8, 12, 16, 20, 0xFFFF},
-		{24, 0xFFFF},
-		{28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* HSIF2 TDM */
-		{0, 4, 8, 12, 16, 20, 0xFFFF},
-		{24, 0xFFFF},
-		{28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* HSIF3 TDM */
-		{0, 4, 8, 12, 16, 20, 0xFFFF},
-		{24, 0xFFFF},
-		{28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* HSIF4 TDM */
-		{0, 4, 8, 12, 16, 20, 0xFFFF},
-		{24, 0xFFFF},
-		{28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	}
-};
-
-static unsigned int tdm_tx_slot_offset
-	[TDM_INTERFACE_MAX][TDM_PORT_MAX][TDM_SLOT_OFFSET_MAX] = {
-	{/* PRI TDM */
-		{0, 0xFFFF},
-		{2, 0xFFFF},
-		{4, 6, 0xFFFF},
-		{8, 10, 0xFFFF},
-		{12, 14, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* SEC TDM */
-		{0, 4, 8, 12, 16, 20, 0xFFFF},
-		{24, 0xFFFF},
-		{28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* TERT TDM */
-		{0, 4, 8, 12, 0xFFFF},
-		{16, 20, 0xFFFF},
-		{24, 28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{28, 0xFFFF},
-	},
-	{/* QUAT TDM */
-		{0, 8, 16, 24, 4, 12, 20, 28, 0xFFFF}, /*8 CH MIC ARR1*/
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{60, 0xFFFF},
-	},
-	{/* QUIN TDM */
-		{0, 4, 8, 12, 16, 20, 24, 28, 0xFFFF}, /*8 CH MIC ARR2*/
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{60, 0xFFFF},
-	},
-	{/* SEN TDM */
-		{0, 4, 8, 12, 0xFFFF},
-		{16, 20, 0xFFFF},
-		{24, 28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* SEP TDM */
-		{0, 4, 8, 12, 0xFFFF},
-		{16, 20, 0xFFFF},
-		{24, 28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* HSIF0 TDM */
-		{0, 4, 8, 12, 0xFFFF},
-		{16, 20, 0xFFFF},
-		{24, 28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* HSIF1 TDM */
-		{0, 4, 8, 12, 0xFFFF},
-		{16, 20, 0xFFFF},
-		{24, 28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* HSIF2 TDM */
-		{0, 4, 8, 12, 0xFFFF},
-		{16, 20, 0xFFFF},
-		{24, 28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* HSIF3 TDM */
-		{0, 4, 8, 12, 0xFFFF},
-		{16, 20, 0xFFFF},
-		{24, 28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* HSIF4 TDM */
-		{0, 4, 8, 12, 0xFFFF},
-		{16, 20, 0xFFFF},
-		{24, 28, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	}
-};
-/*****************************************************************************
- * TO BE UPDATED: Codec/Platform specific tdm slot offset table
- * NOTE:
- * Each entry represents the slot offset array of one backend tdm device
- * valid offset represents the starting offset in byte for the channel
- * use 0xFFFF for end or unused slot offset entry.
- *****************************************************************************/
-static unsigned int tdm_rx_slot_offset_custom
-	[TDM_INTERFACE_MAX][TDM_PORT_MAX][TDM_SLOT_OFFSET_MAX] = {
-	{/* PRI TDM */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* SEC TDM */
-		{0, 2, 0xFFFF},
-		{4, 0xFFFF},
-		{6, 0xFFFF},
-		{8, 0xFFFF},
-		{10, 0xFFFF},
-		{12, 14, 16, 18, 20, 22, 24, 26, 0xFFFF},
-		{28, 30, 0xFFFF},
-		{30, 0xFFFF},
-	},
-	{/* TERT TDM */
-		{0, 2, 0xFFFF},
-		{4, 6, 8, 10, 12, 14, 16, 18, 0xFFFF},
-		{20, 22, 24, 26, 28, 30, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* QUAT TDM */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0, 0xFFFF},
-	},
-	{/* QUIN TDM */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0, 0xFFFF},
-	}
-};
-
-static unsigned int tdm_tx_slot_offset_custom
-	[TDM_INTERFACE_MAX][TDM_PORT_MAX][TDM_SLOT_OFFSET_MAX] = {
-	{/* PRI TDM */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* SEC TDM */
-		{0, 2, 0xFFFF},
-		{4, 6, 8, 10, 12, 14, 16, 18, 0xFFFF},
-		{20, 22, 24, 26, 28, 30, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-	},
-	{/* TERT TDM */
-		{0, 2, 4, 6, 8, 10, 12, 0xFFFF},
-		{14, 16, 0xFFFF},
-		{18, 20, 22, 24, 26, 28, 30, 0xFFFF},
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{30, 0xFFFF},
-	},
-	{/* QUAT TDM */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0, 0xFFFF},
-	},
-	{/* QUIN TDM */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0xFFFF}, /* not used */
-		{0, 0xFFFF},
-	}
-};
-
 
 struct snd_soc_card sa8155_snd_soc_card_auto_msm = {
         .name = "sa8155-adp-star-snd-card",
@@ -696,6 +206,30 @@ static int msm_tdm_get_intf_idx(u16 id)
 		default: return -EINVAL;
 	}
 }
+
+static int auto_adsp_notifier_service_cb(struct notifier_block *this,
+					 unsigned long opcode, void *ptr)
+{
+	pr_debug("%s: Service opcode 0x%lx\n", __func__, opcode);
+
+	switch (opcode) {
+	case AUDIO_NOTIFIER_SERVICE_DOWN:
+		snd_card_notify_user(SND_CARD_STATUS_OFFLINE);
+		break;
+	case AUDIO_NOTIFIER_SERVICE_UP:
+		snd_card_notify_user(SND_CARD_STATUS_ONLINE);
+		break;
+	default:
+		break;
+	}
+
+	return NOTIFY_OK;
+}
+
+static struct notifier_block service_nb = {
+	.notifier_call  = auto_adsp_notifier_service_cb,
+	.priority = -INT_MAX,
+};
 
 static int msm_set_pinctrl(struct msm_pinctrl_info *pinctrl_info,
                                 enum pinctrl_pin_state new_state)
@@ -849,28 +383,28 @@ static struct snd_soc_ops tdm_be_ops = {
 static struct snd_soc_dai_link msm_common_dai_links[] = {
 /* BackEnd DAI Links */
 {
-	.name = "PRI_TDM_RX_0",
-	.stream_name = "TDM-LPAIF-RX-PRIMARY",
+	.name = "LPASS_BE_AUXPCM_RX_DUMMY",
+	.stream_name = "AUXPCM-LPAIF-RX-PRIMARY",
 	.dpcm_playback = 1,
+	.ops = &tdm_be_ops,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
-	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
 	.id = IDX_PRIMARY_TDM_RX_0,
-	SND_SOC_DAILINK_REG(pri_tdm_rx_0),
+	SND_SOC_DAILINK_REG(lpass_be_auxpcm_rx_dummy),
 },
 {
-	.name = "PRI_TDM_TX_0",
-	.stream_name = "TDM-LPAIF-TX-PRIMARY",
+	.name = "LPASS_BE_AUXPCM_TX_DUMMY",
+	.stream_name = "AUXPCM-LPAIF-TX-PRIMARY",
 	.dpcm_capture = 1,
+	.ops = &tdm_be_ops,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
-	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
 	.id = IDX_PRIMARY_TDM_TX_0,
-	SND_SOC_DAILINK_REG(pri_tdm_tx_0),
+	SND_SOC_DAILINK_REG(lpass_be_auxpcm_tx_dummy),
 },
 {
 	.name = "SEC_TDM_RX_0",
@@ -919,6 +453,114 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.ignore_pmdown_time = 1,
 	.id = IDX_TERTIARY_TDM_TX_0,
 	SND_SOC_DAILINK_REG(tert_tdm_tx_0),
+},
+{
+	.name = "QUAT_TDM_RX_0",
+	.stream_name = "TDM-LPAIF_RXTX-RX-PRIMARY",
+	.dpcm_playback = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	.id = IDX_QUATERNARY_TDM_RX_0,
+	SND_SOC_DAILINK_REG(quat_tdm_rx_0),
+},
+{
+	.name = "QUAT_TDM_TX_0",
+	.stream_name = "TDM-LPAIF_RXTX-TX-PRIMARY",
+	.dpcm_capture = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	.id = IDX_QUATERNARY_TDM_TX_0,
+	SND_SOC_DAILINK_REG(quat_tdm_tx_0),
+},
+{
+	.name = "QUIN_TDM_RX_0",
+	.stream_name = "TDM-LPAIF_VA-RX-PRIMARY",
+	.dpcm_playback = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	.id = IDX_QUINARY_TDM_RX_0,
+	SND_SOC_DAILINK_REG(quin_tdm_rx_0),
+},
+{
+	.name = "QUIN_TDM_TX_0",
+	.stream_name = "TDM-LPAIF_VA-TX-PRIMARY",
+	.dpcm_capture = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	.id = IDX_QUINARY_TDM_TX_0,
+	SND_SOC_DAILINK_REG(quin_tdm_tx_0),
+},
+{
+	.name = "SEN_TDM_RX_0",
+	.stream_name = "TDM-LPAIF_WSA-RX-PRIMARY",
+	.dpcm_playback = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(sen_tdm_rx_0),
+},
+{
+	.name = "SEN_TDM_TX_0",
+	.stream_name = "TDM-LPAIF_WSA-TX-PRIMARY",
+	.dpcm_capture = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(sen_tdm_tx_0),
+},
+{
+	.name = "SEP_TDM_RX_0",
+	.stream_name = "TDM-LPAIF_AUD-RX-PRIMARY",
+	.dpcm_playback = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(sep_tdm_rx_0),
+},
+{
+	.name = "SEP_TDM_TX_0",
+	.stream_name = "TDM-LPAIF_AUD-TX-PRIMARY",
+	.dpcm_capture = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(sep_tdm_tx_0),
+},
+{
+	.name = "OCT_TDM_RX_0",
+	.stream_name = "TDM-LPAIF_WSA2-RX-PRIMARY",
+	.dpcm_playback = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(oct_tdm_rx_0),
+},
+{
+	.name = "OCT_TDM_TX_0",
+	.stream_name = "TDM-LPAIF_WSA2-TX-PRIMARY",
+	.dpcm_capture = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(oct_tdm_tx_0),
 },
 {
 	.name = "HS_IF0_TDM_RX_0",
@@ -1039,7 +681,47 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.ignore_pmdown_time = 1,
         .id = IDX_HSIF4_TDM_TX_0,
 	SND_SOC_DAILINK_REG(hs_if4_tdm_tx_0),
-}
+},
+{
+	.name = "QUAT_TDM_RX_0_DUMMY",
+	.stream_name = "TDM-LPAIF-RX-QUATERNARY",
+	.dpcm_playback = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(quat_tdm_rx_0_dummy),
+},
+{
+	.name = "QUAT_TDM_TX_0_DUMMY",
+	.stream_name = "TDM-LPAIF-TX-QUATERNARY",
+	.dpcm_capture = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(quat_tdm_tx_0_dummy),
+},
+{
+	.name = "QUIN_TDM_RX_0_DUMMY",
+	.stream_name = "TDM-LPAIF-RX-QUINARY",
+	.dpcm_playback = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(quin_tdm_rx_0_dummy),
+},
+{
+	.name = "QUIN_TDM_TX_0_DUMMY",
+	.stream_name = "TDM-LPAIF-TX-QUINARY",
+	.dpcm_capture = 1,
+	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+				SND_SOC_DPCM_TRIGGER_POST},
+	.ignore_suspend = 1,
+	.ignore_pmdown_time = 1,
+	SND_SOC_DAILINK_REG(quin_tdm_tx_0_dummy),
+},
 };
 
 
@@ -1143,8 +825,6 @@ err:
 }
 
 static const struct of_device_id asoc_machine_of_match[]  = {
-	{ .compatible = "qcom,msm-pcm-pinctrl",
-	  .data = ""},
 	{ .compatible = "qcom,sa8295-asoc-snd-adp-star",
 	  .data = "adp_star_codec"},
 	{ .compatible = "qcom,sa8155-asoc-snd-adp-star",
@@ -1152,6 +832,11 @@ static const struct of_device_id asoc_machine_of_match[]  = {
 	{ .compatible = "qcom,sa8255-asoc-snd-adp-star",
 	  .data = "adp_star_codec"},
 	{},
+};
+
+static const struct of_device_id audio_pinctrl_dummy_match[] = {
+	{ .compatible = "qcom,msm-pcm-pinctrl" },
+	{ },
 };
 
 static struct snd_soc_dai_link msm_auto_dai_links[
@@ -1211,98 +896,6 @@ void msm_common_set_pdata(struct snd_soc_card *card,
 		return;
 
 	pdata->common_pdata = common_pdata;
-}
-
-/*****************************************************************************
- * TO BE UPDATED: Codec/Platform specific tdm slot and offset table selection
- *****************************************************************************/
-static int msm_tdm_init(struct platform_device *pdev)
-{
-	struct snd_soc_card *card = platform_get_drvdata(pdev);
-	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
-	const struct of_device_id *match;
-	int count;
-
-	match = of_match_node(asoc_machine_of_match, pdev->dev.of_node);
-	if (!match) {
-		dev_err(&pdev->dev, "%s: No DT match found for sound card\n",
-			__func__);
-		return -EINVAL;
-	}
-
-	if (!strcmp(match->data, "custom_codec")) {
-		dev_dbg(&pdev->dev, "%s: custom tdm configuration\n", __func__);
-
-		memcpy(tdm_rx_slot_offset,
-			tdm_rx_slot_offset_custom,
-			sizeof(tdm_rx_slot_offset_custom));
-		memcpy(tdm_tx_slot_offset,
-			tdm_tx_slot_offset_custom,
-			sizeof(tdm_tx_slot_offset_custom));
-		memcpy(tdm_slot,
-			tdm_slot_custom,
-			sizeof(tdm_slot_custom));
-	} else {
-		dev_dbg(&pdev->dev, "%s: default tdm configuration\n", __func__);
-	}
-
-	for (count = 0; count < TDM_INTERFACE_MAX; count++) {
-		mutex_init(&pdata->tdm_intf_conf[count].lock);
-		pdata->tdm_intf_conf[count].ref_cnt = 0;
-	}
-
-	return 0;
-}
-
-static void msm_tdm_deinit(struct platform_device *pdev)
-{
-	struct snd_soc_card *card = platform_get_drvdata(pdev);
-	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
-	int count;
-
-	for (count = 0; count < TDM_INTERFACE_MAX; count++) {
-		mutex_destroy(&pdata->tdm_intf_conf[count].lock);
-		pdata->tdm_intf_conf[count].ref_cnt = 0;
-	}
-}
-static void msm_i2s_auxpcm_init(struct platform_device *pdev)
-{
-	struct snd_soc_card *card = platform_get_drvdata(pdev);
-	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
-	int count;
-	u32 mi2s_master_slave[MI2S_MAX];
-	int ret;
-
-	for (count = 0; count < MI2S_MAX; count++) {
-		mutex_init(&pdata->mi2s_intf_conf[count].lock);
-		pdata->mi2s_intf_conf[count].ref_cnt = 0;
-	}
-
-	ret = of_property_read_u32_array(pdev->dev.of_node,
-			"qcom,msm-mi2s-master",
-			mi2s_master_slave, MI2S_MAX);
-	if (ret) {
-		dev_dbg(&pdev->dev, "%s: no qcom,msm-mi2s-master in DT node\n",
-			__func__);
-	} else {
-		for (count = 0; count < MI2S_MAX; count++) {
-			pdata->mi2s_intf_conf[count].msm_is_mi2s_master =
-				mi2s_master_slave[count];
-		}
-	}
-}
-
-static void msm_i2s_auxpcm_deinit(struct platform_device *pdev)
-{
-	struct snd_soc_card *card = platform_get_drvdata(pdev);
-	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
-	int count;
-
-	for (count = 0; count < MI2S_MAX; count++) {
-		mutex_destroy(&pdata->mi2s_intf_conf[count].lock);
-		pdata->mi2s_intf_conf[count].ref_cnt = 0;
-		pdata->mi2s_intf_conf[count].msm_is_mi2s_master = 0;
-	}
 }
 
 /*****************************************************************************
@@ -1505,11 +1098,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	if (strstr(match->compatible, "pcm-pinctrl")) {
-		dev_err(&pdev->dev, "%s: pcm-pinctrl\n", __func__);
-		return 0;
-	}
-
 	if (!pdev->dev.of_node) {
 		dev_err(&pdev->dev, "No platform supplied from device tree\n");
 		return -EINVAL;
@@ -1541,12 +1129,6 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	}
 
 	ret = msm_populate_dai_link_component_of_node(card);
-	if (ret) {
-		ret = -EPROBE_DEFER;
-		goto err;
-	}
-
-	ret = msm_tdm_init(pdev);
 	if (ret) {
 		ret = -EPROBE_DEFER;
 		goto err;
@@ -1598,13 +1180,13 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		}
 	}
 
-	msm_i2s_auxpcm_init(pdev);
-
 	dev_info(&pdev->dev, "Sound card %s registered\n", card->name);
 	pr_err("Sound card %s registered\n", card->name);
 	spdev = pdev;
 
 	snd_card_set_card_status(SND_CARD_STATUS_ONLINE);
+	ret = audio_notifier_register("auto_spf", AUDIO_NOTIFIER_ADSP_DOMAIN,
+				      &service_nb);
 
 	return 0;
 err:
@@ -1615,11 +1197,32 @@ err:
 
 static int msm_asoc_machine_remove(struct platform_device *pdev)
 {
-	msm_i2s_auxpcm_deinit(pdev);
-	msm_tdm_deinit(pdev);
 	msm_release_pinctrl(pdev);
 	return 0;
 }
+
+static int audio_pinctrl_dummy_probe(struct platform_device *pdev)
+{
+	pr_err("%s\n", __func__);
+	return 0;
+}
+
+static int audio_pinctrl_dummy_remove(struct platform_device *pdev)
+{
+	pr_err("%s\n", __func__);
+	return 0;
+}
+
+static struct platform_driver audio_pinctrl_dummy_driver = {
+	.driver = {
+		.name = DRV_PINCTRL_NAME,
+		.owner = THIS_MODULE,
+		.of_match_table = audio_pinctrl_dummy_match,
+		.suppress_bind_attrs = true,
+	},
+	.probe = audio_pinctrl_dummy_probe,
+	.remove = audio_pinctrl_dummy_remove,
+};
 
 static struct platform_driver asoc_machine_driver = {
 	.driver = {
@@ -1637,12 +1240,14 @@ int __init auto_spf_init(void)
 {
 	pr_err("%s\n", __func__);
 	snd_card_sysfs_init();
+	platform_driver_register(&audio_pinctrl_dummy_driver);
 	return platform_driver_register(&asoc_machine_driver);
 }
 
 void auto_spf_exit(void)
 {
 	pr_err("%s\n", __func__);
+	platform_driver_unregister(&audio_pinctrl_dummy_driver);
 	platform_driver_unregister(&asoc_machine_driver);
 }
 
@@ -1652,4 +1257,6 @@ module_exit(auto_spf_exit);
 MODULE_DESCRIPTION("ALSA SoC Machine Driver for SPF");
 MODULE_LICENSE("GPL v2");
 MODULE_ALIAS("platform:" DRV_NAME);
+MODULE_ALIAS("platform:" DRV_PINCTRL_NAME);
 MODULE_DEVICE_TABLE(of, asoc_machine_of_match);
+MODULE_DEVICE_TABLE(of, audio_pinctrl_dummy_match);

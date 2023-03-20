@@ -1,5 +1,5 @@
 /* Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022, 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -32,6 +32,7 @@
 #include <dsp/audio_notifier.h>
 #include "msm_dailink.h"
 #include <soc/qcom/boot_stats.h>
+#include "msm_common.h"
 
 
 #define DRV_NAME "spf-asoc-snd"
@@ -66,6 +67,18 @@
 #define ADSP_STATE_READY_TIMEOUT_MS 3000
 #define MSM_LL_QOS_VALUE 300 /* time in us to ensure LPM doesn't go in C3/C4 */
 #define MSM_HIFI_ON 1
+#define BUF_SZ 32
+#define DIR_SZ 10
+
+struct snd_card_pdata {
+	struct kobject snd_card_kobj;
+	int card_status;
+}*snd_card_pdata;
+
+static struct attribute card_state_attr = {
+	.name = "card_state",
+	.mode = 0660,
+};
 
 enum {
 	SLIM_RX_0 = 0,
@@ -691,6 +704,71 @@ static struct snd_soc_dai_link msm_talos_dai_links[] = {
 	},
 };
 
+int snd_card_notify_user(snd_card_status_t card_status)
+{
+	snd_card_pdata->card_status = card_status;
+	sysfs_notify(&snd_card_pdata->snd_card_kobj, NULL, "card_state");
+	return 0;
+}
+
+int snd_card_set_card_status(snd_card_status_t card_status)
+{
+	snd_card_pdata->card_status = card_status;
+	return 0;
+}
+
+static ssize_t snd_card_sysfs_show(struct kobject *kobj,
+		struct attribute *attr, char *buf)
+{
+	return snprintf(buf, BUF_SZ, "%d", snd_card_pdata->card_status);
+}
+
+static ssize_t snd_card_sysfs_store(struct kobject *kobj,
+		struct attribute *attr, const char *buf, size_t count)
+{
+	sscanf(buf, "%d", &snd_card_pdata->card_status);
+	sysfs_notify(&snd_card_pdata->snd_card_kobj, NULL, "card_state");
+	return 0;
+}
+
+static const struct sysfs_ops snd_card_sysfs_ops = {
+	.show = snd_card_sysfs_show,
+	.store = snd_card_sysfs_store,
+};
+
+static struct kobj_type snd_card_ktype = {
+	.sysfs_ops = &snd_card_sysfs_ops,
+};
+
+int snd_card_sysfs_init(void)
+{
+	int ret = 0;
+	char dir[DIR_SZ] = "snd_card";
+
+	snd_card_pdata = kcalloc(1, sizeof(struct snd_card_pdata), GFP_KERNEL);
+	ret = kobject_init_and_add(&snd_card_pdata->snd_card_kobj, &snd_card_ktype,
+		kernel_kobj, dir);
+	if (ret < 0) {
+		pr_err("%s: Failed to add kobject %s, err = %d\n",
+			__func__, dir, ret);
+		goto done;
+	}
+
+	ret = sysfs_create_file(&snd_card_pdata->snd_card_kobj, &card_state_attr);
+	if (ret < 0) {
+		pr_err("%s: Failed to add snd_card sysfs entry to %s\n",
+			__func__, dir);
+		goto fail_create_file;
+	}
+
+	return ret;
+
+fail_create_file:
+	kobject_put(&snd_card_pdata->snd_card_kobj);
+done:
+	return ret;
+}
+
 struct snd_soc_card snd_soc_card_gvm_auto_dummy_msm;
 
 static int msm_populate_dai_link_component_of_node(
@@ -857,24 +935,21 @@ static long virt_sndcard_ioctl(struct file *f,
 			unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
-#if IS_ENABLED(CONFIG_AUDIO_QGKI)
-	struct snd_soc_card *card = platform_get_drvdata(spdev);
 
 	switch (cmd) {
 	case AUTO_VIRT_SNDCARD_OFFLINE:
-		snd_soc_card_change_online_state(card, 0); // change sndcard status to OFFLINE
-		dev_info(&spdev->dev, "ssr restart, mark sndcard offline\n");
+		snd_card_notify_user(SND_CARD_STATUS_OFFLINE);
+		pr_debug("%s: mark sndcard offline\n", __func__);
 	break;
 	case AUTO_VIRT_SNDCARD_ONLINE:
-		snd_soc_card_change_online_state(card, 1); // change sndcard status to ONLINE
-		dev_info(&spdev->dev, "ssr complete, mark sndcard online\n");
+		snd_card_notify_user(SND_CARD_STATUS_ONLINE);
+		pr_debug("%s: mark sndcard online\n", __func__);
 	break;
 	default:
 		pr_err("%s: ioctl not found\n", __func__);
 		ret = -EFAULT;
 	break;
 	}
-#endif /* CONFIG_AUDIO_QGKI */
 
 	return ret;
 }
@@ -959,6 +1034,15 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	}
 	dev_info(&pdev->dev, "Audio virtual sndcard ctrl register complete\n");
 
+	ret = snd_card_sysfs_init();
+	if (ret) {
+		pr_err("snd_card_sysfs_init fail, ret=%d\n", ret);
+	}
+
+	ret = snd_card_set_card_status(SND_CARD_STATUS_ONLINE);
+	if (ret) {
+		pr_err("snd_card_set_card_status fail, ret=%d\n", ret);
+	}
 	return 0;
 err:
 	devm_kfree(&pdev->dev, pdata);
