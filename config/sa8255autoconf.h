@@ -1,4 +1,4 @@
-/* Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+/* Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,3 +24,4 @@
 #define CONFIG_SND_SOC_SA8255_AUTO_SPF 1
 #define CONFIG_PINCTRL_LPI 1
 #define CONFIG_SND_SOC_WCD9XXX_V2 1
+#define CONFIG_DIGITAL_CDC_RSC_MGR 1
