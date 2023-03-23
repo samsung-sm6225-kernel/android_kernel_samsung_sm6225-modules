@@ -61,6 +61,7 @@ static const char *const tdm_gpio_phandle[] = {"qcom,pri-tdm-gpios",
 						"qcom,quin-tdm-gpios",
 						"qcom,sen-tdm-gpios",
 						"qcom,sep-tdm-gpios",
+						"qcom,oct-tdm-gpios",
 						"qcom,hsif0-tdm-gpios",
 						"qcom,hsif1-tdm-gpios",
 						"qcom,hsif2-tdm-gpios",
@@ -78,6 +79,7 @@ enum {
 	TDM_QUIN,
 	TDM_SEN,
 	TDM_SEP,
+	TDM_OCT,
 	TDM_HSIF0,
 	TDM_HSIF1,
 	TDM_HSIF2,
@@ -101,6 +103,8 @@ enum {
 	IDX_SENARY_TDM_TX_0,
 	IDX_SEPTENARY_TDM_RX_0,
 	IDX_SEPTENARY_TDM_TX_0,
+	IDX_OCTONARY_TDM_RX_0,
+	IDX_OCTONARY_TDM_TX_0,
 	IDX_HSIF0_TDM_RX_0,
 	IDX_HSIF0_TDM_TX_0,
 	IDX_HSIF1_TDM_RX_0,
@@ -187,6 +191,9 @@ static int msm_tdm_get_intf_idx(u16 id)
 		case IDX_SEPTENARY_TDM_RX_0:
 		case IDX_SEPTENARY_TDM_TX_0:
 			return TDM_SEP;
+		case IDX_OCTONARY_TDM_RX_0:
+		case IDX_OCTONARY_TDM_TX_0:
+			return TDM_OCT;
 		case IDX_HSIF0_TDM_RX_0:
 		case IDX_HSIF0_TDM_TX_0:
 			return TDM_HSIF0;
@@ -508,8 +515,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_playback = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_SENARY_TDM_RX_0,
 	SND_SOC_DAILINK_REG(sen_tdm_rx_0),
 },
 {
@@ -518,8 +527,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_SENARY_TDM_TX_0,
 	SND_SOC_DAILINK_REG(sen_tdm_tx_0),
 },
 {
@@ -528,8 +539,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_playback = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_SEPTENARY_TDM_RX_0,
 	SND_SOC_DAILINK_REG(sep_tdm_rx_0),
 },
 {
@@ -538,8 +551,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_SEPTENARY_TDM_TX_0,
 	SND_SOC_DAILINK_REG(sep_tdm_tx_0),
 },
 {
@@ -548,8 +563,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_playback = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_OCTONARY_TDM_RX_0,
 	SND_SOC_DAILINK_REG(oct_tdm_rx_0),
 },
 {
@@ -558,8 +575,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_OCTONARY_TDM_TX_0,
 	SND_SOC_DAILINK_REG(oct_tdm_tx_0),
 },
 {
@@ -1039,13 +1058,13 @@ static int msm_pinctrl_mclk_enable(struct platform_device *pdev)
 		pinctrl_info->pinctrl = pinctrl;
 		/* get all the states handles from Device Tree */
 		pinctrl_info->sleep = pinctrl_lookup_state(pinctrl,
-			"sleep");
+			"default");
 		if (IS_ERR(pinctrl_info->sleep)) {
 			pr_err("%s: could not get sleep pin state\n", __func__);
 			goto err;
 		}
 		pinctrl_info->active = pinctrl_lookup_state(pinctrl,
-			"default");
+			"active");
 		if (IS_ERR(pinctrl_info->active)) {
 			pr_err("%s: could not get active pin state\n", __func__);
 			goto err;
