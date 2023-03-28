@@ -1242,9 +1242,12 @@ static int wcd9xxx_i2c_probe(struct i2c_client *client,
 
 		ret = wcd9xxx_i2c_read(wcd9xxx, WCD9XXX_A_CHIP_STATUS, 1,
 				       &val, 0);
-		if (ret < 0)
+		if (ret < 0) {
 			pr_err("%s: failed to read the wcd9xxx status (%d)\n",
 			       __func__, ret);
+			ret = 0;
+		}
+
 		if (val != wcd9xxx->codec_type->i2c_chip_status)
 			pr_err("%s: unknown chip status 0x%x\n", __func__, val);
 

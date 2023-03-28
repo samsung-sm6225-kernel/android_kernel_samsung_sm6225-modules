@@ -11462,6 +11462,7 @@ err_resmgr:
 	mutex_destroy(&tavil->swr.write_mutex);
 	mutex_destroy(&tavil->swr.clk_mutex);
 	devm_kfree(&pdev->dev, tavil);
+	platform_set_drvdata(pdev, NULL);
 
 	return ret;
 }
