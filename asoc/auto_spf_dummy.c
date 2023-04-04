@@ -65,8 +65,6 @@ static const char *const tdm_gpio_phandle[] = {"qcom,pri-tdm-gpios",
 						"qcom,hsif0-tdm-gpios",
 						"qcom,hsif1-tdm-gpios",
 						"qcom,hsif2-tdm-gpios",
-						"qcom,hsif3-tdm-gpios",
-						"qcom,hsif4-tdm-gpios",
 						};
 
 static const char *const mclk_gpio_phandle[] = { "qcom,internal-mclk1-gpios" };
@@ -83,8 +81,6 @@ enum {
 	TDM_HSIF0,
 	TDM_HSIF1,
 	TDM_HSIF2,
-	TDM_HSIF3,
-	TDM_HSIF4,
 	TDM_INTERFACE_MAX,
 };
 
@@ -210,13 +206,13 @@ static int msm_tdm_get_intf_idx(u16 id)
 			return TDM_HSIF1;
 		case IDX_HSIF2_TDM_RX_0:
 		case IDX_HSIF2_TDM_TX_0:
-                        return TDM_HSIF2;
+			return TDM_HSIF2;
 		case IDX_HSIF3_TDM_RX_0:
 		case IDX_HSIF3_TDM_TX_0:
-                        return TDM_HSIF3;
+			return TDM_SEC; //muxed
 		case IDX_HSIF4_TDM_RX_0:
 		case IDX_HSIF4_TDM_TX_0:
-                        return TDM_HSIF4;
+			return TDM_TERT; //muxed
 
 		default: return -EINVAL;
 	}
