@@ -115,6 +115,10 @@ enum {
 	IDX_HSIF3_TDM_TX_0,
 	IDX_HSIF4_TDM_RX_0,
 	IDX_HSIF4_TDM_TX_0,
+	IDX_QUATERNARY_TDM_RX_DUMMY_0,
+	IDX_QUATERNARY_TDM_TX_DUMMY_0,
+	IDX_QUINARY_TDM_RX_DUMMY_0,
+	IDX_QUINARY_TDM_TX_DUMMY_0,
 	IDX_GROUP_TDM_MAX,
 };
 
@@ -181,9 +185,13 @@ static int msm_tdm_get_intf_idx(u16 id)
 			return TDM_TERT;
 		case IDX_QUATERNARY_TDM_RX_0:
 		case IDX_QUATERNARY_TDM_TX_0:
+		case IDX_QUATERNARY_TDM_RX_DUMMY_0:
+		case IDX_QUATERNARY_TDM_TX_DUMMY_0:
 			return TDM_QUAT;
 		case IDX_QUINARY_TDM_RX_0:
 		case IDX_QUINARY_TDM_TX_0:
+		case IDX_QUINARY_TDM_RX_DUMMY_0:
+		case IDX_QUINARY_TDM_TX_DUMMY_0:
 			return TDM_QUIN;
 		case IDX_SENARY_TDM_RX_0:
 		case IDX_SENARY_TDM_TX_0:
@@ -707,8 +715,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_playback = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_QUATERNARY_TDM_RX_DUMMY_0,
 	SND_SOC_DAILINK_REG(quat_tdm_rx_0_dummy),
 },
 {
@@ -717,8 +727,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_QUATERNARY_TDM_TX_DUMMY_0,
 	SND_SOC_DAILINK_REG(quat_tdm_tx_0_dummy),
 },
 {
@@ -727,8 +739,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_playback = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_QUINARY_TDM_RX_DUMMY_0,
 	SND_SOC_DAILINK_REG(quin_tdm_rx_0_dummy),
 },
 {
@@ -737,8 +751,10 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 	.dpcm_capture = 1,
 	.trigger = {SND_SOC_DPCM_TRIGGER_POST,
 				SND_SOC_DPCM_TRIGGER_POST},
+	.ops = &tdm_be_ops,
 	.ignore_suspend = 1,
 	.ignore_pmdown_time = 1,
+	.id = IDX_QUINARY_TDM_TX_DUMMY_0,
 	SND_SOC_DAILINK_REG(quin_tdm_tx_0_dummy),
 },
 };
