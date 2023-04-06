@@ -208,6 +208,10 @@ ifdef CONFIG_SND_SOC_KALAMA
 	MACHINE_OBJS += kalama.o
 endif
 
+ifdef CONFIG_SND_SOC_PCIE
+	PCIE_OBJS += msm-pcm-pcie.o
+endif
+
 # for HOLI sound card driver
 ifdef CONFIG_SND_SOC_HOLI
 	MACHINE_OBJS += holi.o
@@ -344,6 +348,9 @@ spf_machine_dlkm-y := $(SPF_MACHINE_OBJS)
 
 obj-$(CONFIG_SND_SOC_GVM_AUTO_SPF) += spf_machine_dlkm.o
 spf_machine_dlkm-y := $(SPF_MACHINE_OBJS)
+
+obj-$(CONFIG_SND_SOC_PCIE) += msm_pcm_pcie_dlkm.o
+msm_pcm_pcie_dlkm-y := $(PCIE_OBJS)
 
 # inject some build related information
 DEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"
