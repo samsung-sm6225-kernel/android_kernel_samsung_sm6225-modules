@@ -1022,7 +1022,7 @@ static int sdx_ssr_enable(struct device *dev, void *data)
 
 	snd_card_notify_user(SND_CARD_STATUS_ONLINE);
 
-	dev_dbg(dev, "%s: setting snd_card to ONLINE\n", __func__);
+	dev_info(dev, "%s: setting snd_card to ONLINE\n", __func__);
 
 err:
 	return ret;
@@ -1038,7 +1038,7 @@ static void sdx_ssr_disable(struct device *dev, void *data)
 		return;
 	}
 
-	dev_dbg(dev, "%s: setting snd_card to OFFLINE\n", __func__);
+	dev_info(dev, "%s: setting snd_card to OFFLINE\n", __func__);
 
 
 	snd_card_notify_user(SND_CARD_STATUS_OFFLINE);
@@ -1231,6 +1231,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		goto err5;
 	}
 
+	snd_card_sysfs_init();
 	ret = msm_audio_ssr_register(&pdev->dev);
 	if (ret)
 		pr_err("%s: Registration with SND event FWK failed ret = %d\n",

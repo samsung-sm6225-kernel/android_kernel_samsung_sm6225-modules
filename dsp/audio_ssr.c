@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -26,7 +26,11 @@ void *audio_ssr_register(const char *domain_name, struct notifier_block *nb)
 		return ERR_PTR(-EINVAL);
 	}
 
+#ifdef CONFIG_MDM_AUDIO_SSR
+	return qcom_register_ssr_notifier("mpss", nb);
+#else
 	return qcom_register_ssr_notifier(domain_name, nb);
+#endif
 }
 EXPORT_SYMBOL(audio_ssr_register);
 

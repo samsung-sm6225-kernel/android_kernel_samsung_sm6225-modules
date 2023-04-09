@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only
-Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
 Copyright (c) 2020, The Linux Foundation. All rights reserved.
  */
 
@@ -10,6 +10,7 @@ Copyright (c) 2020, The Linux Foundation. All rights reserved.
 #define CONFIG_AUDIO_PKT 1
 #define CONFIG_AUDIO_PKT_ION 1
 #define CONFIG_SPF_CORE 1
+#define CONFIG_MDM_AUDIO_SSR 1
 #define CONFIG_AUDIO_PRM 1
 #define CONFIG_AUDIO_GPR_DOMAIN_MODEM 1
 #define CONFIG_SND_SOC_MSM_QDSP6V2_INTF 1
