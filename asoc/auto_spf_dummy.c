@@ -30,6 +30,7 @@
 #include <sound/info.h>
 #include <dsp/audio_notifier.h>
 #include <dsp/audio_prm.h>
+#include <soc/snd_event.h>
 #include "msm_dailink.h"
 #include "msm_common.h"
 
@@ -236,29 +237,76 @@ static int msm_tdm_get_intf_idx(u16 id)
 	}
 }
 
-static int auto_adsp_notifier_service_cb(struct notifier_block *this,
-					 unsigned long opcode, void *ptr)
+static int auto_ssr_enable(struct device *dev, void *data)
 {
-	pr_debug("%s: Service opcode 0x%lx\n", __func__, opcode);
+	struct platform_device *pdev = to_platform_device(dev);
+	struct snd_soc_card *card = platform_get_drvdata(pdev);
+	int ret = 0;
 
-	switch (opcode) {
-	case AUDIO_NOTIFIER_SERVICE_DOWN:
-		snd_card_notify_user(SND_CARD_STATUS_OFFLINE);
-		break;
-	case AUDIO_NOTIFIER_SERVICE_UP:
-		snd_card_notify_user(SND_CARD_STATUS_ONLINE);
-		break;
-	default:
-		break;
+	if (!card) {
+		dev_err(dev, "%s: card is NULL\n", __func__);
+		ret = -EINVAL;
+		goto err;
 	}
 
-	return NOTIFY_OK;
+	dev_dbg(dev, "%s: setting snd_card to ONLINE\n", __func__);
+	snd_card_notify_user(SND_CARD_STATUS_ONLINE);
+err:
+	return ret;
 }
 
-static struct notifier_block service_nb = {
-	.notifier_call  = auto_adsp_notifier_service_cb,
-	.priority = -INT_MAX,
+static void auto_ssr_disable(struct device *dev, void *data)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct snd_soc_card *card = platform_get_drvdata(pdev);
+
+	if (!card) {
+		dev_err(dev, "%s: card is NULL\n", __func__);
+		return;
+	}
+
+	dev_dbg(dev, "%s: setting snd_card to OFFLINE\n", __func__);
+	snd_card_notify_user(SND_CARD_STATUS_OFFLINE);
+}
+
+static const struct snd_event_ops auto_ssr_ops = {
+	.enable = auto_ssr_enable,
+	.disable = auto_ssr_disable,
 };
+
+
+static int msm_audio_ssr_compare(struct device *dev, void *data)
+{
+	struct device_node *node = data;
+
+	dev_dbg(dev, "%s: dev->of_node = 0x%p, node = 0x%p\n",
+		__func__, dev->of_node, node);
+	return (dev->of_node && dev->of_node == node);
+}
+
+static int msm_audio_ssr_register(struct device *dev)
+{
+	struct device_node *np = dev->of_node;
+	struct snd_event_clients *ssr_clients = NULL;
+	struct device_node *node = NULL;
+	int ret = 0;
+	int i = 0;
+
+	for (i = 0; ; i++) {
+		node = of_parse_phandle(np, "qcom,msm_audio_ssr_devs", i);
+		if (!node)
+			break;
+		snd_event_mstr_add_client(&ssr_clients,
+					msm_audio_ssr_compare, node);
+	}
+
+	ret = snd_event_master_register(dev, &auto_ssr_ops,
+					ssr_clients, NULL);
+	if (!ret)
+		snd_event_notify(dev, SND_EVENT_UP);
+
+	return ret;
+}
 
 static int msm_set_pinctrl(struct msm_pinctrl_info *pinctrl_info,
                                 enum pinctrl_pin_state new_state)
@@ -1346,10 +1394,12 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	pr_err("Sound card %s registered\n", card->name);
 	spdev = pdev;
 
-	snd_card_set_card_status(SND_CARD_STATUS_ONLINE);
-	ret = audio_notifier_register("auto_spf", AUDIO_NOTIFIER_ADSP_DOMAIN,
-				      &service_nb);
+	ret = msm_audio_ssr_register(&pdev->dev);
+	if (ret)
+		pr_err("%s: Registration with SND event FWK failed ret = %d\n",
+			__func__, ret);
 
+	snd_card_set_card_status(SND_CARD_STATUS_ONLINE);
 	return 0;
 err:
 	msm_release_mclk_pinctrl(pdev);
@@ -1362,6 +1412,7 @@ static int msm_asoc_machine_remove(struct platform_device *pdev)
 {
 	msm_release_mclk_pinctrl(pdev);
 	msm_release_pinctrl(pdev);
+	snd_event_master_deregister(&pdev->dev);
 	return 0;
 }
 
