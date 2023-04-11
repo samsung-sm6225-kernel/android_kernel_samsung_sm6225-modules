@@ -425,7 +425,6 @@ void msm_audio_delete_fd_entry(void *handle)
 		return;
 	}
 
-	mutex_lock(&(msm_audio_ion_fd_list.list_mutex));
 	list_for_each_safe(ptr, next,
 			&msm_audio_ion_fd_list.fd_list) {
 		msm_audio_fd_data = list_entry(ptr, struct msm_audio_fd_data,
@@ -438,7 +437,6 @@ void msm_audio_delete_fd_entry(void *handle)
 			break;
 		}
 	}
-	mutex_unlock(&(msm_audio_ion_fd_list.list_mutex));
 }
 
 int msm_audio_get_phy_addr(int fd, u64 *paddr, size_t *pa_len)
@@ -515,7 +513,6 @@ void msm_audio_get_handle(int fd, void **handle)
 	struct msm_audio_fd_data *msm_audio_fd_data = NULL;
 
 	pr_debug("%s fd %d\n", __func__, fd);
-	mutex_lock(&(msm_audio_ion_fd_list.list_mutex));
 	*handle = NULL;
 	list_for_each_entry(msm_audio_fd_data,
 			&msm_audio_ion_fd_list.fd_list, list) {
@@ -525,7 +522,6 @@ void msm_audio_get_handle(int fd, void **handle)
 			break;
 		}
 	}
-	mutex_unlock(&(msm_audio_ion_fd_list.list_mutex));
 }
 
 /**
@@ -859,6 +855,7 @@ static long msm_audio_ion_ioctl(struct file *file, unsigned int ioctl_num,
 		break;
 	case IOCTL_UNMAP_PHYS_ADDR:
 	case COMPAT_IOCTL_UNMAP_PHYS_ADDR:
+		mutex_lock(&(msm_audio_ion_fd_list.list_mutex));
 		msm_audio_get_handle((int)ioctl_param, &mem_handle);
 		ret = msm_audio_ion_free(mem_handle, ion_data);
 		if (ret < 0) {
@@ -866,6 +863,7 @@ static long msm_audio_ion_ioctl(struct file *file, unsigned int ioctl_num,
 			return ret;
 		}
 		msm_audio_delete_fd_entry(mem_handle);
+		mutex_unlock(&(msm_audio_ion_fd_list.list_mutex));
 		break;
 	case IOCTL_MAP_HYP_ASSIGN:
 #ifndef CONFIG_AUDIO_GPR_DOMAIN_MODEM
