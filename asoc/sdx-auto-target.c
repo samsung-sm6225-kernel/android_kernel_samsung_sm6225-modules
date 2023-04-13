@@ -509,13 +509,13 @@ static int sdx_sec_auxpcm_startup(struct snd_pcm_substream *substream)
 
 		iowrite32(PCM_SEL << I2S_PCM_SEL_OFFSET,
 			  pdata->lpaif_sec_muxsel_virt_addr);
-		if (pdata->lpass_mux_spkr_ctl_virt_addr != NULL) {
+		if (pdata->lpass_sec_mux_spkr_ctl_virt_addr != NULL) {
 			if (pdata->sec_auxpcm_mode == 1)
 				iowrite32(SEC_TLMM_CLKS_EN_MASTER,
-				pdata->lpass_mux_spkr_ctl_virt_addr);
+				pdata->lpass_sec_mux_spkr_ctl_virt_addr);
 			else
 				iowrite32(SEC_TLMM_CLKS_EN_SLAVE,
-				pdata->lpass_mux_spkr_ctl_virt_addr);
+				pdata->lpass_sec_mux_spkr_ctl_virt_addr);
 		} else {
 			dev_err(card->dev, "%s: mux spkr ctl virt addr is NULL\n",
 				__func__);
