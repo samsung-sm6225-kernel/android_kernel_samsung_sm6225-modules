@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/gpio.h>
@@ -51,7 +51,7 @@ static struct attribute device_state_attr = {
 
 static struct attribute card_state_attr = {
 	.name = "card_state",
-	.mode = 0660,
+	.mode = 0666,
 };
 
 #define MAX_PORT 20
