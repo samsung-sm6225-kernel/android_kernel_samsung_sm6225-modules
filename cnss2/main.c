@@ -3049,8 +3049,11 @@ int cnss_do_elf_ramdump(struct cnss_plat_data *plat_priv)
 		}
 
 		seg = kcalloc(1, sizeof(*seg), GFP_KERNEL);
-		if (!seg)
+		if (!seg) {
+			cnss_pr_err("%s: Failed to allocate mem for seg %d\n",
+				    __func__, i);
 			continue;
+		}
 
 		if (meta_info.entry[dump_seg->type].entry_start == 0) {
 			meta_info.entry[dump_seg->type].type = dump_seg->type;
@@ -3065,8 +3068,11 @@ int cnss_do_elf_ramdump(struct cnss_plat_data *plat_priv)
 	}
 
 	seg = kcalloc(1, sizeof(*seg), GFP_KERNEL);
-	if (!seg)
-		goto do_elf_dump;
+	if (!seg) {
+		cnss_pr_err("%s: Failed to allocate mem for elf ramdump seg\n",
+			    __func__);
+		goto skip_elf_dump;
+	}
 
 	meta_info.magic = CNSS_RAMDUMP_MAGIC;
 	meta_info.version = CNSS_RAMDUMP_VERSION;
@@ -3076,9 +3082,9 @@ int cnss_do_elf_ramdump(struct cnss_plat_data *plat_priv)
 	seg->size = sizeof(meta_info);
 	list_add(&seg->node, &head);
 
-do_elf_dump:
 	ret = qcom_elf_dump(&head, info_v2->ramdump_dev, ELF_CLASS);
 
+skip_elf_dump:
 	while (!list_empty(&head)) {
 		seg = list_first_entry(&head, struct qcom_dump_segment, node);
 		list_del(&seg->node);
@@ -3119,8 +3125,9 @@ int cnss_do_host_ramdump(struct cnss_plat_data *plat_priv,
 		[CNSS_HOST_WMI_EVENT_LOG_IDX] = "wmi_event_log_idx",
 		[CNSS_HOST_WMI_RX_EVENT_IDX] = "wmi_rx_event_idx"
 	};
-	int i, j;
+	int i;
 	int ret = 0;
+	enum cnss_host_dump_type j;
 
 	if (!dump_enabled()) {
 		cnss_pr_info("Dump collection is not enabled\n");
@@ -3153,7 +3160,7 @@ int cnss_do_host_ramdump(struct cnss_plat_data *plat_priv,
 		seg->da = (dma_addr_t)ssr_entry[i].buffer_pointer;
 		seg->size = ssr_entry[i].buffer_size;
 
-		for (j = 0; j < ARRAY_SIZE(wlan_str); j++) {
+		for (j = 0; j < CNSS_HOST_DUMP_TYPE_MAX; j++) {
 			if (strncmp(ssr_entry[i].region_name, wlan_str[j],
 				    strlen(wlan_str[j])) == 0) {
 				meta_info.entry[i].type = j;
@@ -3166,6 +3173,13 @@ int cnss_do_host_ramdump(struct cnss_plat_data *plat_priv,
 	}
 
 	seg = kcalloc(1, sizeof(*seg), GFP_KERNEL);
+
+	if (!seg) {
+		cnss_pr_err("%s: Failed to allocate mem for host dump seg\n",
+			    __func__);
+		goto skip_host_dump;
+	}
+
 	meta_info.magic = CNSS_RAMDUMP_MAGIC;
 	meta_info.version = CNSS_RAMDUMP_VERSION;
 	meta_info.chipset = plat_priv->device_id;
@@ -3174,7 +3188,10 @@ int cnss_do_host_ramdump(struct cnss_plat_data *plat_priv,
 	seg->da = (dma_addr_t)&meta_info;
 	seg->size = sizeof(meta_info);
 	list_add(&seg->node, &head);
+
 	ret = qcom_elf_dump(&head, new_device, ELF_CLASS);
+
+skip_host_dump:
 	while (!list_empty(&head)) {
 		seg = list_first_entry(&head, struct qcom_dump_segment, node);
 		list_del(&seg->node);
