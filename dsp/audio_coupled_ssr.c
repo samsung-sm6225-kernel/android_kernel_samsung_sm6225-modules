@@ -21,12 +21,10 @@ struct coupled_ssr_private {
 	const char *ssr_name;
 	struct rproc *ssr_rproc;
 	void *ssr_notify_handler;
-	struct work_struct ssr_work;
 	struct list_head list;
 };
 
 struct coupled_ssr_private_list {
-	struct mutex ssr_in_process_mutex;
 	struct list_head priv_list;
 };
 
@@ -42,17 +40,6 @@ static int strlcmp(const char *s, const char *t, size_t n)
 		}
 	}
 	return (unsigned char)*s;
-}
-
-static void coupled_ssr_work_func(struct work_struct *ssr_work) {
-	struct coupled_ssr_private *ssr_priv = container_of(ssr_work,
-				struct coupled_ssr_private, ssr_work);
-	if (ssr_priv && ssr_priv->ssr_rproc) {
-		rproc_shutdown(ssr_priv->ssr_rproc);
-		rproc_boot(ssr_priv->ssr_rproc);
-	} else {
-		pr_err("%s: no dsp rproc!\n", __func__);
-	}
 }
 
 static int ssr_notifier_general(struct notifier_block *this,
@@ -74,7 +61,9 @@ static int ssr_notifier_general(struct notifier_block *nb,
 
 	pr_debug("%s: ssr name %s opcode 0x%lx \n", __func__, data->name, opcode);
 
-	mutex_lock(&coupled_ssr_list.ssr_in_process_mutex);
+	/*
+	 * restart dsps in serial order to avoid coccurency of gpr remove and probe
+	 */
 	if (data->crashed && opcode == QCOM_SSR_BEFORE_SHUTDOWN) {
 		pr_debug("%s: coupled ssr start from %s\n", __func__, data->name);
 		list_for_each_entry(coupled_ssr_data_priv,
@@ -82,12 +71,12 @@ static int ssr_notifier_general(struct notifier_block *nb,
 			ssr_name_len = strlen(coupled_ssr_data_priv->ssr_name);
 			if (strlcmp(data->name, coupled_ssr_data_priv->ssr_name, ssr_name_len) &&
 				coupled_ssr_data_priv->ssr_rproc) {
-				schedule_work(&coupled_ssr_data_priv->ssr_work);
+				rproc_shutdown(coupled_ssr_data_priv->ssr_rproc);
+				rproc_boot(coupled_ssr_data_priv->ssr_rproc);
 			}
 		}
 	}
 
-	mutex_unlock(&coupled_ssr_list.ssr_in_process_mutex);
 	return NOTIFY_OK;
 }
 
@@ -145,7 +134,6 @@ static int coupled_ssr_probe(struct platform_device *pdev)
 		return -ENOPARAM;
 	}
 	INIT_LIST_HEAD(&coupled_ssr_list.priv_list);
-	mutex_init(&coupled_ssr_list.ssr_in_process_mutex);
 
 	for (i = 0; i < rproc_count; i++) {
 		of_property_read_u32_index(pdev->dev.of_node,
@@ -190,7 +178,6 @@ static int coupled_ssr_probe(struct platform_device *pdev)
 		coupled_ssr_data->ssr_name = subsys_ssr_name;
 		coupled_ssr_data->ssr_rproc = ssr_rproc;
 		coupled_ssr_data->ssr_notify_handler = ssr_notify_handler;
-		INIT_WORK(&coupled_ssr_data->ssr_work, coupled_ssr_work_func);
 		coupled_ssr_list_update(coupled_ssr_data);
 	}
 
