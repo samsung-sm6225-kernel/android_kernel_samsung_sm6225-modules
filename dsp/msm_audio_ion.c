@@ -287,7 +287,7 @@ static int msm_audio_dma_buf_unmap(struct dma_buf *dma_buf, struct msm_audio_ion
 }
 
 static int msm_audio_ion_get_phys(struct dma_buf *dma_buf,
-				  u64 *addr, size_t *len, bool is_iova,
+				  dma_addr_t *addr, size_t *len, bool is_iova,
 				  struct msm_audio_ion_private *ion_data)
 {
 	int rc = 0;
@@ -570,7 +570,7 @@ void msm_audio_get_handle(int fd, void **handle)
  */
 static int msm_audio_ion_import(struct dma_buf **dma_buf, int fd,
 			unsigned long *ionflag, size_t bufsz,
-			u64 *paddr, size_t *plen, struct dma_buf_map *dma_vmap,
+			dma_addr_t *paddr, size_t *plen, struct dma_buf_map *dma_vmap,
 			struct msm_audio_ion_private *ion_data)
 {
 	int rc = 0;
@@ -759,7 +759,7 @@ static int msm_audio_hyp_assign_for_subsystems(int fd, u64 ss_masks)
 {
 	int i = 0 , count = 0;
 	int ret = 0;
-	u64 paddr;
+	dma_addr_t paddr;
 	size_t pa_len = 0;
 	int vmids[GPR_DOMAIN_MAX] = {0};
 	int perms[GPR_DOMAIN_MAX] = {0};
@@ -796,7 +796,7 @@ static int msm_audio_hyp_unassign_for_subsystems(int fd, u64 ss_masks)
 {
 	int i = 0 , count = 0;
 	int ret = 0;
-	u64 paddr;
+	dma_addr_t paddr;
 	size_t pa_len = 0;
 	int vmids[GPR_DOMAIN_MAX] = {0};
 	int mdf_reclaim_vm_map[1] = {VMID_HLOS};
@@ -842,7 +842,7 @@ static long msm_audio_ion_ioctl(struct file *file, unsigned int ioctl_num,
 				unsigned long __user ioctl_param)
 {
 	void *mem_handle;
-	u64 paddr;
+	dma_addr_t paddr;
 	size_t pa_len = 0;
 	struct dma_buf_map *dma_vmap = NULL;
 	int ret = 0;
