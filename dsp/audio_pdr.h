@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2018, 2020 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef __AUDIO_PDR_H_
@@ -10,6 +11,7 @@
 
 enum {
 	AUDIO_PDR_DOMAIN_ADSP,
+	AUDIO_PDR_DOMAIN_MODEM_ROOT,
 	AUDIO_PDR_DOMAIN_MAX
 };
 
