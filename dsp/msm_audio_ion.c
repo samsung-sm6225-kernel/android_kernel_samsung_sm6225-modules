@@ -708,8 +708,17 @@ void msm_audio_ion_crash_handler(void)
 			handle = msm_audio_fd_data->handle;
 			ion_data = dev_get_drvdata(msm_audio_fd_data->dev);
 			/*  clean if CMA was used*/
-			if (msm_audio_fd_data->hyp_assign)
+			/*
+			 * TODO: assigned memory to adsp, mdsp & sdsp cannot be reclaimed,
+			 * caused  by a known issue from TZ.
+			 * After TZ fixes the issue, the memory can have the common handling
+			 */
+			if (msm_audio_fd_data->hyp_assign) {
+				if (msm_audio_fd_data->ss_masks == (0x1|0x2|0x8)) {
+					continue;
+				}
 				msm_audio_hyp_unassign(msm_audio_fd_data);
+			}
 			if (handle)
 				msm_audio_ion_free(handle, ion_data);
 		}
