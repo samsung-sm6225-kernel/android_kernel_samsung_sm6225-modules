@@ -233,6 +233,10 @@ static void check_userspace_service_state(struct snd_soc_pcm_runtime *rtd,
 			spf_core_apm_close_all();
 			/*unmap all dma mapped buffers*/
 			msm_audio_ion_crash_handler();
+#if IS_ENABLED(CONFIG_SND_SOC_PCIE)
+			/*clear pcie driver state*/
+			msm_pcm_pcie_crash_handler();
+#endif
 			pdata->dsp_sessions_closed = 1;
 		}
 		/*Reset the state as sysfs node wont be triggred*/

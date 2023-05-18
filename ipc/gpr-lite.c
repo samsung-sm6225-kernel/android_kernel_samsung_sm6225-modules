@@ -1,6 +1,5 @@
 /* Copyright (c) 2011-2017, 2019-2021 The Linux Foundation. All rights reserved.
  * Copyright (c) 2018, Linaro Limited
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -11,7 +10,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -162,17 +161,27 @@ EXPORT_SYMBOL(gpr_set_modem_state);
 
 static void gpr_modem_down(unsigned long opcode)
 {
+	pr_err("%s: called \n", __func__);
+
 	gpr_set_modem_state(GPR_SUBSYS_DOWN);
 	//dispatch_event(opcode, APR_DEST_MODEM);
+#ifdef CONFIG_MDM_AUDIO_SSR
+	snd_event_notify(gpr_priv->dev, SND_EVENT_DOWN);
+#endif
 }
 
 static void gpr_modem_up(void)
 {
+	pr_err("%s: called \n", __func__);
+
 	gpr_set_modem_state(GPR_SUBSYS_LOADED);
 	//if (apr_cmpxchg_modem_state(APR_SUBSYS_DOWN, APR_SUBSYS_UP) ==
 	//						APR_SUBSYS_DOWN)
 	//	wake_up(&modem_wait);
 	//is_modem_up = 1;
+#ifdef CONFIG_MDM_AUDIO_SSR
+	snd_event_notify(gpr_priv->dev, SND_EVENT_UP);
+#endif
 }
 
 
@@ -231,10 +240,12 @@ static int gpr_notifier_service_cb(struct notifier_block *this,
 		 * up since everything is expected to be down.
 		 */
 		spin_lock(&gpr_priv->gpr_lock);
+#ifndef CONFIG_MDM_AUDIO_SSR
 		if (gpr_priv->is_initial_boot) {
 			spin_unlock(&gpr_priv->gpr_lock);
 			break;
 		}
+#endif
 		spin_unlock(&gpr_priv->gpr_lock);
 		if (cb_data->domain == AUDIO_NOTIFIER_MODEM_DOMAIN)
 			gpr_modem_down(opcode);
@@ -491,6 +502,10 @@ static void gpr_notifier_register(struct work_struct *work)
 		gpr_subsys_notif_register("gpr_modem",
 				       AUDIO_NOTIFIER_MODEM_DOMAIN,
 				       &modem_service_nb);
+
+#ifdef CONFIG_MDM_AUDIO_SSR
+		gpr_modem_up();
+#endif
 	}
 
 	dev_info_ratelimited(gpr_priv->dev,

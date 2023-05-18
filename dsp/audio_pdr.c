@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2017, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/module.h>
@@ -18,6 +18,11 @@ static struct audio_pdr_service audio_pdr_services[AUDIO_PDR_DOMAIN_MAX] = {
 	{	/* AUDIO_PDR_DOMAIN_ADSP */
 		.service_name = "avs/audio",
 		.service_path = "msm/adsp/audio_pd",
+	},
+	{
+		/* AUDIO_PDR_DOMAIN_MODEM_ROOT */
+		.service_name = "avs/audio",
+		.service_path = "msm/modem/root_pd",
 	}
 };
 
