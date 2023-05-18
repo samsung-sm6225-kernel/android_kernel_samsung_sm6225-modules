@@ -222,8 +222,12 @@ int btfm_slim_disable_ch(struct btfmslim *btfmslim, struct btfmslim_ch *ch,
 		}
 	}
 	ch->dai.sconfig.port_mask = 0;
-	if (ch->dai.sconfig.chs != NULL)
+	if (ch->dai.sconfig.chs != NULL) {
 		kfree(ch->dai.sconfig.chs);
+		BTFMSLIM_INFO("setting ch->dai.sconfig.chs to NULL");
+		ch->dai.sconfig.chs = NULL;
+	} else
+		BTFMSLIM_ERR("ch->dai.sconfig.chs is already NULL");
 
 	if (btfm_num_ports_open > 0)
 		btfm_num_ports_open--;
@@ -240,7 +244,10 @@ int btfm_slim_disable_ch(struct btfmslim *btfmslim, struct btfmslim_ch *ch,
 		chipset_ver == QCA_HSP_SOC_ID_1211 ||
 		chipset_ver == QCA_HAMILTON_SOC_ID_0100 ||
 		chipset_ver == QCA_HAMILTON_SOC_ID_0101 ||
-		chipset_ver == QCA_HAMILTON_SOC_ID_0200 )) {
+		chipset_ver == QCA_HAMILTON_SOC_ID_0200 ||
+		chipset_ver == QCA_APACHE_SOC_ID_0100 ||
+		chipset_ver == QCA_APACHE_SOC_ID_0110 ||
+		chipset_ver == QCA_APACHE_SOC_ID_0121)) {
 		BTFMSLIM_INFO("SB reset needed after all ports disabled, sleeping");
 		msleep(DELAY_FOR_PORT_OPEN_MS);
 	}
@@ -356,7 +363,8 @@ int btfm_slim_hw_init(struct btfmslim *btfmslim)
 		slim_ifd->e_addr.instance = 0x0;
 		slim_ifd->laddr = 0x0;
 	} else if (chipset_ver == QCA_MOSELLE_SOC_ID_0100 ||
-		chipset_ver == QCA_MOSELLE_SOC_ID_0110) {
+		chipset_ver == QCA_MOSELLE_SOC_ID_0110 ||
+		chipset_ver == QCA_MOSELLE_SOC_ID_0120) {
 		BTFMSLIM_INFO("chipset is Moselle, overwriting EA");
 		slim->is_laddr_valid = false;
 		slim->e_addr.manf_id = SLIM_MANF_ID_QCOM;
@@ -432,6 +440,25 @@ int btfm_slim_hw_init(struct btfmslim *btfmslim)
 		slim_ifd->e_addr.dev_index = 0x0;
 		slim_ifd->e_addr.instance = 0x0;
 		slim_ifd->laddr = 0x0;
+	}  else if (chipset_ver == QCA_HASTINGS_SOC_ID_0200 ) {
+                BTFMSLIM_INFO("chipset is Hastings, overwriting EA");
+                slim->is_laddr_valid = false;
+                slim->e_addr.manf_id = SLIM_MANF_ID_QCOM;
+                slim->e_addr.prod_code = 0x220;
+                slim->e_addr.dev_index = 0x01;
+                slim->e_addr.instance = 0x0;
+               /* we are doing this to indicate that this is not a child node
+                *  (doesn't have call back functions). Needed only for querying
+                *  logical address.
+                */
+                slim_ifd->dev.driver = NULL;
+                slim_ifd->ctrl = btfmslim->slim_pgd->ctrl; //slimbus controller structure.
+                slim_ifd->is_laddr_valid = false;
+                slim_ifd->e_addr.manf_id = SLIM_MANF_ID_QCOM;
+                slim_ifd->e_addr.prod_code = 0x220;
+                slim_ifd->e_addr.dev_index = 0x0;
+                slim_ifd->e_addr.instance = 0x0;
+                slim_ifd->laddr = 0x0;
 	}
 		BTFMSLIM_INFO(
 			"PGD Enum Addr: manu id:%.02x prod code:%.02x dev idx:%.02x instance:%.02x",
