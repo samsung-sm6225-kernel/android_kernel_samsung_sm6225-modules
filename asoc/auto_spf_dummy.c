@@ -1506,7 +1506,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		pr_err("%s: Registration with SND event FWK failed ret = %d\n",
 			__func__, ret);
 
-	snd_card_set_card_status(SND_CARD_STATUS_ONLINE);
+	snd_card_notify_user(SND_CARD_STATUS_ONLINE);
 	return 0;
 err:
 	msm_release_mclk_pinctrl(pdev);
