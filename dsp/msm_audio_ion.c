@@ -1133,7 +1133,7 @@ static int msm_audio_ion_probe(struct platform_device *pdev)
 	enum apr_subsys_state q6_state;
 #endif
 
-	dev_err(dev, "%s: msm_audio_ion_probe\n", __func__);
+	dev_info(dev, "%s: msm_audio_ion_probe\n", __func__);
 	if (dev->of_node == NULL) {
 		dev_err(dev,
 			"%s: device tree is not found\n",
