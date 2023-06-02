@@ -41,6 +41,7 @@
 #define __CHIPSET__ "SA8xx5 "
 #define MSM_DAILINK_NAME(name) (__CHIPSET__#name)
 
+#ifdef CONFIG_MSM_COUPLED_SSR
 enum subsys_state {
 	SUBSYS_DOWN = 0,
 	SUBSYS_UP = 1
@@ -56,6 +57,7 @@ static struct dsps_state_t {
 	struct mutex lock;
 	enum subsys_state states[SUBSYS_DOMAIN_MAX];
 } dsps_state;
+#endif
 
 
 enum pinctrl_pin_state {
