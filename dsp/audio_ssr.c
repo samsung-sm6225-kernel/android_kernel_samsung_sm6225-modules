@@ -32,11 +32,7 @@ void *audio_ssr_register(int domain_id, struct notifier_block *nb)
 		return ERR_PTR(-EINVAL);
 	}
 
-#ifdef CONFIG_MDM_AUDIO_SSR
-	return qcom_register_ssr_notifier("mpss", nb);
-#else
 	return qcom_register_ssr_notifier(audio_ssr_domains[domain_id], nb);
-#endif
 }
 EXPORT_SYMBOL(audio_ssr_register);
 
