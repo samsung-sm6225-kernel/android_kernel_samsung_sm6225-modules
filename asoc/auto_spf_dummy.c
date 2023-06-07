@@ -473,7 +473,7 @@ err:
 static int msm_mclk_disable(struct snd_soc_card *card,
 		enum msm_mclk_index index)
 {
-	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	struct msm_asoc_mach_data *pdata = NULL;
 	struct msm_pinctrl_info *pinctrl_info = NULL;
 	int ret = 0;
 
