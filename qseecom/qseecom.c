@@ -510,6 +510,11 @@ static int __qseecom_scm_call2_locked(uint32_t smc_id, struct qseecom_scm_desc *
 	int ret = 0;
 	int retry_count = 0;
 
+	if (desc == NULL) {
+		pr_err("The value of desc is NULL.\n");
+		return -EINVAL;
+	}
+
 	do {
 		ret = qcom_scm_qseecom_call(smc_id, desc, false);
 		if ((ret == -EBUSY) || (desc && (desc->ret[0] == -QSEE_RESULT_FAIL_APP_BUSY))) {
@@ -7792,6 +7797,11 @@ long qseecom_ioctl(struct file *file,
 		pr_err("Aborting qseecom driver\n");
 		return -ENODEV;
 	}
+        if (atomic_read(&qseecom.qseecom_state) != QSEECOM_STATE_READY) {
+                pr_err("Not allowed to be called in %d state\n",
+                                atomic_read(&qseecom.qseecom_state));
+                return -EPERM;
+        }
 	if (cmd != QSEECOM_IOCTL_RECEIVE_REQ &&
 		cmd != QSEECOM_IOCTL_SEND_RESP_REQ &&
 		cmd != QSEECOM_IOCTL_SEND_MODFD_RESP &&
