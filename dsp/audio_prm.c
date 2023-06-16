@@ -706,7 +706,7 @@ static int audio_prm_probe(struct gpr_device *adev)
 
 	init_waitqueue_head(&g_prm.wait);
 	g_prm.is_adsp_up = true;
-	pr_err("%s: prm probe success\n", __func__);
+	pr_info("%s: prm probe success\n", __func__);
 	return ret;
 }
 

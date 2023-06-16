@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2017, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/init.h>
@@ -205,21 +205,11 @@ static int audio_notifier_reg_service(int service, int domain)
 	void *handle;
 	int ret = 0;
 	int curr_state = AUDIO_NOTIFIER_SERVICE_DOWN;
-	struct platform_device *pdev = adsp_private;
-	struct adsp_notify_private *priv = NULL;
-	struct rproc *rproc;
-
-	priv = platform_get_drvdata(pdev);
-	if (!priv) {
-		dev_err_ratelimited(&pdev->dev, " %s: Private data get failed\n", __func__);
-		return ret;;
-	}
-
-	rproc = priv->rproc_h;
 
 	switch (service) {
 	case AUDIO_NOTIFIER_SSR_SERVICE:
-		handle = audio_ssr_register(rproc->name,
+		handle = audio_ssr_register(
+			service_data[service][domain].domain_id,
 			service_data[service][domain].hook.nb);
 		break;
 	case AUDIO_NOTIFIER_PDR_SERVICE:
