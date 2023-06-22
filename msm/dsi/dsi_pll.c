@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt)	"%s: " fmt, __func__
@@ -161,7 +161,7 @@ static int dsi_pll_parse_dfps_from_dt(struct platform_device *pdev,
 	}
 
 	if (header.magic_id != DSI_PLL_TRIM_CODES_MAGIC_ID) {
-		DSI_PLL_ERR(pll_res, "pll codes magic id not match\n");
+		DSI_PLL_WARN(pll_res, "pll codes magic id not match\n");
 		rc = -EINVAL;
 		goto err;
 	}
