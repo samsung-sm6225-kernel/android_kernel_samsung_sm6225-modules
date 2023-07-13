@@ -3,7 +3,7 @@
  * QTI Secure Execution Environment Communicator (QSEECOM) driver
  *
  * Copyright (c) 2012-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #define pr_fmt(fmt) "QSEECOM: %s: " fmt, __func__
@@ -12,6 +12,7 @@
 #include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/fs.h>
+#include <linux/reboot.h>
 #include <linux/platform_device.h>
 #include <linux/debugfs.h>
 #include <linux/cdev.h>
@@ -144,6 +145,9 @@
 			err = 0;\
 		}\
 	} while (0)
+
+#define DS_ENTERED 0x1
+#define DS_EXITED  0x0
 
 enum qseecom_clk_definitions {
 	CLK_DFAB = 0,
@@ -370,8 +374,10 @@ struct qseecom_control {
 
 	struct list_head  unload_app_pending_list_head;
 	struct task_struct *unload_app_kthread_task;
+	struct notifier_block reboot_nb;
 	wait_queue_head_t unload_app_kthread_wq;
 	atomic_t unload_app_kthread_state;
+	uint32_t qseecom_ds_state;
 };
 
 struct qseecom_unload_app_pending_list {
@@ -488,6 +494,11 @@ static int qseecom_query_ce_info(struct qseecom_dev_handle *data,
 						void __user *argp);
 static int __qseecom_unload_app(struct qseecom_dev_handle *data,
 				uint32_t app_id);
+
+#ifdef ENABLE_DSQB_SYSFS_NODE
+int qseecom_set_ds_state(uint32_t state);
+int dsqb_sysfs_init(void);
+#endif
 
 static int __maybe_unused get_qseecom_keymaster_status(char *str)
 {
@@ -2050,8 +2061,8 @@ static int qseecom_set_client_mem_param(struct qseecom_dev_handle *data,
 
 	if ((req.ifd_data_fd <= 0) || (req.virt_sb_base == NULL) ||
 					(req.sb_len == 0)) {
-		pr_err("Invalid input(s)ion_fd(%d), sb_len(%d), vaddr(0x%pK)\n",
-			req.ifd_data_fd, req.sb_len, req.virt_sb_base);
+		pr_err("Invalid input(s)ion_fd(%d), sb_len(%d)\n",
+			req.ifd_data_fd, req.sb_len);
 		return -EFAULT;
 	}
 	if (!access_ok((void __user *)req.virt_sb_base,
@@ -3140,7 +3151,8 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 	pr_debug("unload app %d(%s), app_crash flag %d\n", data->client.app_id,
 			data->client.app_name, app_crash);
 
-	if (!memcmp(data->client.app_name, "keymaste", strlen("keymaste"))) {
+	if (!memcmp(data->client.app_name, "keymaste", strlen("keymaste"))
+		&& !(qseecom.qseecom_ds_state == DS_ENTERED)) {
 		pr_debug("Do not unload keymaster app from tz\n");
 		goto unload_exit;
 	}
@@ -3179,7 +3191,7 @@ static int qseecom_unload_app(struct qseecom_dev_handle *data,
 		goto unload_exit;
 	}
 
-	if (!ptr_app->ref_cnt) {
+	if (!ptr_app->ref_cnt || (qseecom.qseecom_ds_state == DS_ENTERED)) {
 		ret = __qseecom_unload_app(data, data->client.app_id);
 		if (ret == -EBUSY) {
 			/*
@@ -9344,6 +9356,24 @@ out:
 	return ret;
 }
 
+/* Set Deep Sleep state. By default DS-state is DS_EXITED
+ * If DS State will be set as DS_ENTERERD, then Keymatser TA can be unloaded.
+ */
+#ifdef ENABLE_DSQB_SYSFS_NODE
+int qseecom_set_ds_state(uint32_t state)
+{
+	int ret = 0;
+
+	if (state == DS_ENTERED || state == DS_EXITED) {
+		qseecom.qseecom_ds_state = state;
+	} else {
+		qseecom.qseecom_ds_state = -EINVAL;
+		pr_err("Invalid deep sleep state = %d\n", state);
+		ret = -EINVAL;
+	}
+	return ret;
+}
+#endif
 /*
  * Check whitelist feature, and if TZ feature version is < 1.0.0,
  * then whitelist feature is not supported.
@@ -9513,6 +9543,49 @@ static void qseecom_release_ce_data(void)
 	}
 }
 
+static int qseecom_reboot_worker(struct notifier_block *nb, unsigned long val, void * data)
+{
+	int rc = 0;
+	struct qseecom_registered_listener_list *entry = NULL;
+
+	/* Mark all the listener as abort since system is going
+	 * for a reboot so every pending listener request should
+         * be aborted.
+         */
+	list_for_each_entry(entry,
+			&qseecom.registered_listener_list_head, list) {
+		if (entry)
+			entry->abort = 1;
+	}
+
+	/* stop CA thread waiting for listener response */
+	wake_up_interruptible_all(&qseecom.send_resp_wq);
+
+	/* Assumption is sytem going in reboot
+	 * every registered listener from userspace waiting
+	 * on event interruptible will receive interrupt as
+         * TASK_INTERRUPTIBLE flag will be set for them
+         */
+
+	return rc;
+}
+static int qseecom_register_reboot_notifier()
+{
+	int rc = 0;
+
+        /* Registering reboot notifier for resource cleanup at reboot.
+	 * Current implementation is for listener use case,
+	 * it can be extended to App also in case of any corner
+	 * case issue found.
+         */
+
+	qseecom.reboot_nb.notifier_call = qseecom_reboot_worker;
+	rc = register_reboot_notifier(&(qseecom.reboot_nb));
+	if (rc)
+		pr_err("failed to register reboot notifier ");
+	return rc;
+}
+
 static int qseecom_init_dev(struct platform_device *pdev)
 {
 	int rc = 0;
@@ -9567,6 +9640,19 @@ static int qseecom_init_dev(struct platform_device *pdev)
 		pr_err("Failed to initialize reserved mem, ret %d\n", rc);
 		goto exit_del_cdev;
 	}
+
+	rc = qseecom_register_reboot_notifier();
+	if (rc) {
+		pr_err("failed in registering reboot notifier %d\n", rc);
+		/* exit even if notifier registeration fail.
+		 * Although, thats not a functional failure from qseecom
+		 * driver prespective but this registeration
+		 * failure will cause more complex issue at the
+		 * time of reboot or possibly halt the reboot.
+		 */
+		goto exit_del_cdev;
+	}
+
 	return 0;
 
 exit_del_cdev:
@@ -9585,6 +9671,7 @@ static void qseecom_deinit_dev(void)
 {
 	kfree(qseecom.dev->dma_parms);
 	qseecom.dev->dma_parms = NULL;
+	unregister_reboot_notifier(&(qseecom.reboot_nb));
 	cdev_del(&qseecom.cdev);
 	device_destroy(qseecom.driver_class, qseecom.qseecom_device_no);
 	class_destroy(qseecom.driver_class);
@@ -9849,6 +9936,12 @@ static int qseecom_probe(struct platform_device *pdev)
 	if (rc)
 		goto exit_deinit_bus;
 
+#ifdef ENABLE_DSQB_SYSFS_NODE
+	rc = dsqb_sysfs_init();
+	if (rc)
+		goto exit_deinit_bus;
+#endif
+
 #if IS_ENABLED(CONFIG_QSEECOM_PROXY)
 	/*If the api fails to get the func ops, print the error and continue
 	* Do not treat it as fatal*/
@@ -9856,6 +9949,7 @@ static int qseecom_probe(struct platform_device *pdev)
 	if (rc)
 		pr_err("failed to provide qseecom ops %d", rc);
 #endif
+	qseecom.qseecom_ds_state = DS_EXITED;
 	atomic_set(&qseecom.qseecom_state, QSEECOM_STATE_READY);
 	return 0;
 
@@ -9919,7 +10013,7 @@ static int qseecom_remove(struct platform_device *pdev)
 	return ret;
 }
 
-static int qseecom_suspend(struct platform_device *pdev, pm_message_t state)
+static int qseecom_suspend(struct device *dev)
 {
 	int ret = 0;
 	struct qseecom_clk *qclk;
@@ -9960,7 +10054,7 @@ static int qseecom_suspend(struct platform_device *pdev, pm_message_t state)
 	return 0;
 }
 
-static int qseecom_resume(struct platform_device *pdev)
+static int qseecom_resume(struct device *dev)
 {
 	int mode = 0;
 	int ret = 0;
@@ -10047,13 +10141,17 @@ static const struct of_device_id qseecom_match[] = {
 	{}
 };
 
+static const struct dev_pm_ops qseecom_pm_ops = {
+	.suspend_late = qseecom_suspend,
+	.resume_early = qseecom_resume,
+};
+
 static struct platform_driver qseecom_plat_driver = {
 	.probe = qseecom_probe,
 	.remove = qseecom_remove,
-	.suspend = qseecom_suspend,
-	.resume = qseecom_resume,
 	.driver = {
 		.name = "qseecom",
+		.pm = &qseecom_pm_ops,
 		.of_match_table = qseecom_match,
 	},
 };
