@@ -375,7 +375,6 @@ int32_t cam_context_prepare_dev_to_hw(struct cam_context *ctx,
 	if ((len < sizeof(struct cam_packet)) ||
 		(cmd->offset >= (len - sizeof(struct cam_packet)))) {
 		CAM_ERR(CAM_CTXT, "Not enough buf");
-		cam_mem_put_cpu_buf((int32_t) cmd->packet_handle);
 		return -EINVAL;
 
 	}
@@ -491,7 +490,7 @@ int32_t cam_context_prepare_dev_to_hw(struct cam_context *ctx,
 				req->in_map_entries[j].sync_id, rc);
 		}
 	}
-	cam_mem_put_cpu_buf((int32_t) cmd->packet_handle);
+
 	return rc;
 put_ref:
 	for (--i; i >= 0; i--) {
@@ -505,7 +504,6 @@ free_req:
 	req->ctx = NULL;
 	spin_unlock(&ctx->lock);
 
-	cam_mem_put_cpu_buf((int32_t) cmd->packet_handle);
 	return rc;
 }
 
