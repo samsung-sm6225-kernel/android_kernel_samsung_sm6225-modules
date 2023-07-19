@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/init.h>
@@ -106,9 +106,6 @@ static void cc_ipc_add_child_dev_func(struct work_struct *work)
 	struct cc_ipc_plat_private *ippriv =
 	    container_of(work, struct cc_ipc_plat_private, add_child_dev_work);
 
-	// TODO: Need lock
-	ippriv->is_initial_boot = false;
-
 	ret =
 	    of_platform_populate(ippriv->dev->of_node, NULL, NULL, ippriv->dev);
 	if (ret) {
@@ -116,6 +113,9 @@ static void cc_ipc_add_child_dev_func(struct work_struct *work)
 			__func__, ret);
 		return;
 	}
+
+	ippriv->is_initial_boot = false;
+
 }
 
 static enum audio_cc_subsys_state audio_cc_get_state(void)
@@ -594,8 +594,16 @@ static int cc_ipc_notifier_service_cb(struct notifier_block *this,
 
 	switch (opcode) {
 	case AUDIO_NOTIFIER_SERVICE_DOWN:
-		audio_cc_set_state(AUDIO_CC_SUBSYS_DOWN);
-		snd_event_notify_v2(cc_ipc_plat_priv->dev, SND_EVENT_DOWN, cb_data->domain);
+		/**
+		 * In case of Slate OTA update when CC goes down, avoid CC-state update
+		 * to 0. This will intact state of CC to 1, and child dev of audio_cc_ipc_plat
+		 * driver can be probed as part of GLINK client probe call. There is no impact
+		 * of Slate SSR down handling.
+		 */
+		if (!cc_ipc_plat_priv->is_initial_boot) {
+			audio_cc_set_state(AUDIO_CC_SUBSYS_DOWN);
+			snd_event_notify_v2(cc_ipc_plat_priv->dev, SND_EVENT_DOWN, cb_data->domain);
+		}
 		break;
 	case AUDIO_NOTIFIER_SERVICE_UP:
 		/*
