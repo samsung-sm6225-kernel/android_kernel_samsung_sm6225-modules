@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #ifndef _DSI_CATALOG_H_
@@ -327,6 +327,8 @@ int dsi_pll_5nm_configure(void *pll, bool commit);
 int dsi_pll_5nm_toggle(void *pll, bool prepare);
 int dsi_pll_4nm_configure(void *pll, bool commit);
 int dsi_pll_4nm_toggle(void *pll, bool prepare);
+int dsi_pll_14nm_configure(void *pll, bool commit);
+int dsi_pll_14nm_toggle(void *pll, bool prepare);
 
 void dsi_ctrl_hw_22_configure_splitlink(struct dsi_ctrl_hw *ctrl,
 		struct dsi_host_common_cfg *common_cfg, u32 sublink);
