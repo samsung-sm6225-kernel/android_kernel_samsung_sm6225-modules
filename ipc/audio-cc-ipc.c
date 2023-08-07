@@ -447,8 +447,6 @@ int audio_cc_ipc_deregister_device(void *handle, int srvc_id)
 	spin_unlock_irqrestore(&ipriv->slock_client, flags);
 	pr_debug("%s: ch %s, ret %d\n", __func__, ipriv->ch_name, ret);
 
-	devm_kfree(cc_ipc_plat_priv->dev, ipriv);
-
 	return ret;
 }
 EXPORT_SYMBOL_GPL(audio_cc_ipc_deregister_device);
