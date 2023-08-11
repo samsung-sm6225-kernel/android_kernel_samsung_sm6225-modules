@@ -234,6 +234,3 @@ audio_pkt_dlkm-y := $(AUDIO_PKT)
 
 obj-$(CONFIG_AUDIO_CC_IPC) += audio_cc_ipc_dlkm.o
 audio_cc_ipc_dlkm-y := $(AUDIO_CC_IPC)
-
-# inject some build related information
-CDEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"
