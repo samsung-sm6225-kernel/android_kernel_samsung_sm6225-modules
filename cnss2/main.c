@@ -467,6 +467,35 @@ int cnss_get_feature_list(struct cnss_plat_data *plat_priv,
 	return 0;
 }
 
+size_t cnss_get_platform_name(struct cnss_plat_data *plat_priv,
+			      char *buf, const size_t buf_len)
+{
+	if (unlikely(!plat_priv || !buf || !buf_len))
+		return 0;
+
+	if (of_property_read_bool(plat_priv->plat_dev->dev.of_node,
+				  "platform-name-required")) {
+		struct device_node *root;
+
+		root = of_find_node_by_path("/");
+		if (root) {
+			const char *model;
+			size_t model_len;
+
+			model = of_get_property(root, "model", NULL);
+			if (model) {
+				model_len = strlcpy(buf, model, buf_len);
+				cnss_pr_dbg("Platform name: %s (%zu)\n",
+					    buf, model_len);
+
+				return model_len;
+			}
+		}
+	}
+
+	return 0;
+}
+
 void cnss_pm_stay_awake(struct cnss_plat_data *plat_priv)
 {
 	if (atomic_inc_return(&plat_priv->pm_count) != 1)
@@ -841,6 +870,11 @@ static int cnss_fw_mem_ready_hdlr(struct cnss_plat_data *plat_priv)
 	ret = cnss_wlfw_tgt_cap_send_sync(plat_priv);
 	if (ret)
 		goto out;
+
+	cnss_bus_load_tme_patch(plat_priv);
+
+	cnss_wlfw_tme_patch_dnld_send_sync(plat_priv,
+					   WLFW_TME_LITE_PATCH_FILE_V01);
 
 	if (plat_priv->hds_enabled)
 		cnss_wlfw_bdf_dnld_send_sync(plat_priv, CNSS_BDF_HDS);
@@ -3209,9 +3243,14 @@ int cnss_do_host_ramdump(struct cnss_plat_data *plat_priv,
 		[CNSS_HOST_WMI_COMMAND_LOG_IDX] = "wmi_command_log_idx",
 		[CNSS_HOST_WMI_EVENT_LOG_IDX] = "wmi_event_log_idx",
 		[CNSS_HOST_WMI_RX_EVENT_IDX] = "wmi_rx_event_idx",
-		[CNSS_HOST_HIF_CE_DESC_HISTORY] = "hif_ce_desc_history",
 		[CNSS_HOST_HIF_CE_DESC_HISTORY_BUFF] = "hif_ce_desc_history_buff",
-		[CNSS_HOST_HANG_EVENT_DATA] = "hang_event_data"
+		[CNSS_HOST_HANG_EVENT_DATA] = "hang_event_data",
+		[CNSS_HOST_CE_DESC_HIST] = "hif_ce_desc_hist",
+		[CNSS_HOST_CE_COUNT_MAX] = "hif_ce_count_max",
+		[CNSS_HOST_CE_HISTORY_MAX] = "hif_ce_history_max",
+		[CNSS_HOST_ONLY_FOR_CRIT_CE] = "hif_ce_only_for_crit",
+		[CNSS_HOST_HIF_EVENT_HISTORY] = "hif_event_history",
+		[CNSS_HOST_HIF_EVENT_HIST_MAX] = "hif_event_hist_max"
 	};
 	int i;
 	int ret = 0;
@@ -4440,7 +4479,7 @@ static void cnss_sram_dump_init(struct cnss_plat_data *plat_priv)
 }
 #endif
 
-#ifdef CONFIG_WCNSS_MEM_PRE_ALLOC
+#if IS_ENABLED(CONFIG_WCNSS_MEM_PRE_ALLOC)
 static void cnss_initialize_mem_pool(unsigned long device_id)
 {
 	cnss_initialize_prealloc_pool(device_id);

@@ -49,6 +49,7 @@
 #define DEFAULT_PHY_M3_FILE_NAME	"m3.bin"
 #define DEFAULT_AUX_FILE_NAME		"aux_ucode.elf"
 #define DEFAULT_PHY_UCODE_FILE_NAME	"phy_ucode.elf"
+#define TME_PATCH_FILE_NAME		"tmel_patch.elf"
 #define PHY_UCODE_V2_FILE_NAME		"phy_ucode20.elf"
 #define DEFAULT_FW_FILE_NAME		"amss.bin"
 #define FW_V2_FILE_NAME			"amss20.bin"
@@ -1310,6 +1311,42 @@ static int cnss_set_pci_config_space(struct cnss_pci_data *pci_priv, bool save)
 	return 0;
 }
 
+static int cnss_update_supported_link_info(struct cnss_pci_data *pci_priv)
+{
+	int ret = 0;
+	struct pci_dev *root_port;
+	struct device_node *root_of_node;
+	struct cnss_plat_data *plat_priv;
+
+	if (!pci_priv)
+		return -EINVAL;
+
+	if (pci_priv->device_id != KIWI_DEVICE_ID)
+		return ret;
+
+	plat_priv = pci_priv->plat_priv;
+	root_port = pcie_find_root_port(pci_priv->pci_dev);
+
+	if (!root_port) {
+		cnss_pr_err("PCIe root port is null\n");
+		return -EINVAL;
+	}
+
+	root_of_node = root_port->dev.of_node;
+	if (root_of_node && root_of_node->parent) {
+		ret = of_property_read_u32(root_of_node->parent,
+					   "qcom,target-link-speed",
+					   &plat_priv->supported_link_speed);
+		if (!ret)
+			cnss_pr_dbg("Supported PCIe Link Speed: %d\n",
+				    plat_priv->supported_link_speed);
+		else
+			plat_priv->supported_link_speed = 0;
+	}
+
+	return ret;
+}
+
 static int cnss_pci_get_link_status(struct cnss_pci_data *pci_priv)
 {
 	u16 link_status;
@@ -1387,7 +1424,8 @@ int cnss_suspend_pci_link(struct cnss_pci_data *pci_priv)
 	pci_disable_device(pci_priv->pci_dev);
 
 	if (pci_priv->pci_dev->device != QCA6174_DEVICE_ID) {
-		if (pci_set_power_state(pci_priv->pci_dev, PCI_D3hot))
+		ret = pci_set_power_state(pci_priv->pci_dev, PCI_D3hot);
+		if (ret)
 			cnss_pr_err("Failed to set D3Hot, err =  %d\n", ret);
 	}
 
@@ -2791,6 +2829,7 @@ int cnss_pci_call_driver_probe(struct cnss_pci_data *pci_priv)
 		if (ret) {
 			cnss_pr_err("Failed to probe host driver, err = %d\n",
 				    ret);
+			complete_all(&plat_priv->power_up_complete);
 			goto out;
 		}
 		clear_bit(CNSS_DRIVER_LOADING, &plat_priv->driver_state);
@@ -4762,6 +4801,78 @@ void cnss_pci_free_qdss_mem(struct cnss_pci_data *pci_priv)
 	plat_priv->qdss_mem_seg_len = 0;
 }
 
+int cnss_pci_load_tme_patch(struct cnss_pci_data *pci_priv)
+{
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
+	struct cnss_fw_mem *tme_lite_mem = &plat_priv->tme_lite_mem;
+	char filename[MAX_FIRMWARE_NAME_LEN];
+	char *tme_patch_filename = NULL;
+	const struct firmware *fw_entry;
+	int ret = 0;
+
+	switch (pci_priv->device_id) {
+	case PEACH_DEVICE_ID:
+		tme_patch_filename = TME_PATCH_FILE_NAME;
+		break;
+	case QCA6174_DEVICE_ID:
+	case QCA6290_DEVICE_ID:
+	case QCA6390_DEVICE_ID:
+	case QCA6490_DEVICE_ID:
+	case KIWI_DEVICE_ID:
+	case MANGO_DEVICE_ID:
+	default:
+		cnss_pr_dbg("TME-L not supported for device ID: (0x%x)\n",
+			    pci_priv->device_id);
+		return 0;
+	}
+
+	if (!tme_lite_mem->va && !tme_lite_mem->size) {
+		cnss_pci_add_fw_prefix_name(pci_priv, filename,
+					    tme_patch_filename);
+
+		ret = firmware_request_nowarn(&fw_entry, filename,
+					      &pci_priv->pci_dev->dev);
+		if (ret) {
+			cnss_pr_err("Failed to load TME-L patch: %s, ret: %d\n",
+				    filename, ret);
+			return ret;
+		}
+
+		tme_lite_mem->va = dma_alloc_coherent(&pci_priv->pci_dev->dev,
+						fw_entry->size, &tme_lite_mem->pa,
+						GFP_KERNEL);
+		if (!tme_lite_mem->va) {
+			cnss_pr_err("Failed to allocate memory for M3, size: 0x%zx\n",
+				    fw_entry->size);
+			release_firmware(fw_entry);
+			return -ENOMEM;
+		}
+
+		memcpy(tme_lite_mem->va, fw_entry->data, fw_entry->size);
+		tme_lite_mem->size = fw_entry->size;
+		release_firmware(fw_entry);
+	}
+
+	return 0;
+}
+
+static void cnss_pci_free_tme_lite_mem(struct cnss_pci_data *pci_priv)
+{
+	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
+	struct cnss_fw_mem *tme_lite_mem = &plat_priv->tme_lite_mem;
+
+	if (tme_lite_mem->va && tme_lite_mem->size) {
+		cnss_pr_dbg("Freeing memory for TME patch, va: 0x%pK, pa: %pa, size: 0x%zx\n",
+			    tme_lite_mem->va, &tme_lite_mem->pa, tme_lite_mem->size);
+		dma_free_coherent(&pci_priv->pci_dev->dev, tme_lite_mem->size,
+				  tme_lite_mem->va, tme_lite_mem->pa);
+	}
+
+	tme_lite_mem->va = NULL;
+	tme_lite_mem->pa = 0;
+	tme_lite_mem->size = 0;
+}
+
 int cnss_pci_load_m3(struct cnss_pci_data *pci_priv)
 {
 	struct cnss_plat_data *plat_priv = pci_priv->plat_priv;
@@ -5139,6 +5250,19 @@ int cnss_pci_get_user_msi_assignment(struct cnss_pci_data *pci_priv,
 					    base_vector);
 }
 
+static int cnss_pci_irq_set_affinity_hint(struct cnss_pci_data *pci_priv,
+					  unsigned int vec,
+					  const struct cpumask *cpumask)
+{
+	int ret;
+	struct pci_dev *pci_dev = pci_priv->pci_dev;
+
+	ret = irq_set_affinity_hint(pci_irq_vector(pci_dev, vec),
+				    cpumask);
+
+	return ret;
+}
+
 static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 {
 	int ret = 0;
@@ -5180,6 +5304,24 @@ static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 		goto reset_msi_config;
 	}
 
+	/* With VT-d disabled on x86 platform, only one pci irq vector is
+	 * allocated. Once suspend the irq may be migrated to CPU0 if it was
+	 * affine to other CPU with one new msi vector re-allocated.
+	 * The observation cause the issue about no irq handler for vector
+	 * once resume.
+	 * The fix is to set irq vector affinity to CPU0 before calling
+	 * request_irq to avoid the irq migration.
+	 */
+	if (cnss_pci_is_one_msi(pci_priv)) {
+		ret = cnss_pci_irq_set_affinity_hint(pci_priv,
+						     0,
+						     cpumask_of(0));
+		if (ret) {
+			cnss_pr_err("Failed to affinize irq vector to CPU0\n");
+			goto free_msi_vector;
+		}
+	}
+
 	if (cnss_pci_config_msi_addr(pci_priv)) {
 		ret = -EINVAL;
 		goto free_msi_vector;
@@ -5193,6 +5335,8 @@ static int cnss_pci_enable_msi(struct cnss_pci_data *pci_priv)
 	return 0;
 
 free_msi_vector:
+	if (cnss_pci_is_one_msi(pci_priv))
+		cnss_pci_irq_set_affinity_hint(pci_priv, 0, NULL);
 	pci_free_irq_vectors(pci_priv->pci_dev);
 reset_msi_config:
 	pci_priv->msi_config = NULL;
@@ -5204,6 +5348,9 @@ static void cnss_pci_disable_msi(struct cnss_pci_data *pci_priv)
 {
 	if (pci_priv->device_id == QCA6174_DEVICE_ID)
 		return;
+
+	if (cnss_pci_is_one_msi(pci_priv))
+		cnss_pci_irq_set_affinity_hint(pci_priv, 0, NULL);
 
 	pci_free_irq_vectors(pci_priv->pci_dev);
 }
@@ -5603,6 +5750,11 @@ int cnss_pci_force_fw_assert_hdlr(struct cnss_pci_data *pci_priv)
 	ret = cnss_pci_pm_runtime_get_sync(pci_priv, RTPM_ID_CNSS);
 	if (ret < 0)
 		goto runtime_pm_put;
+	/*
+	 * In some scenarios, cnss_pci_pm_runtime_get_sync
+	 * might not resume PCI bus. For those cases do auto resume.
+	 */
+	cnss_auto_resume(&pci_priv->pci_dev->dev);
 
 	if (!pci_priv->is_smmu_fault)
 		cnss_pci_mhi_reg_dump(pci_priv);
@@ -6894,28 +7046,6 @@ static bool cnss_should_suspend_pwroff(struct pci_dev *pci_dev)
 }
 #endif
 
-static void cnss_pci_suspend_pwroff(struct pci_dev *pci_dev)
-{
-	struct cnss_pci_data *pci_priv = cnss_get_pci_priv(pci_dev);
-	int rc_num = pci_dev->bus->domain_nr;
-	struct cnss_plat_data *plat_priv;
-	int ret = 0;
-	bool suspend_pwroff = cnss_should_suspend_pwroff(pci_dev);
-
-	plat_priv = cnss_get_plat_priv_by_rc_num(rc_num);
-
-	if (suspend_pwroff) {
-		ret = cnss_suspend_pci_link(pci_priv);
-		if (ret)
-			cnss_pr_err("Failed to suspend PCI link, err = %d\n",
-				    ret);
-		cnss_power_off_device(plat_priv);
-	} else {
-		cnss_pr_dbg("bus suspend and dev power off disabled for device [0x%x]\n",
-			    pci_dev->device);
-	}
-}
-
 #ifdef CONFIG_CNSS2_ENUM_WITH_LOW_SPEED
 static void
 cnss_pci_downgrade_rc_speed(struct cnss_plat_data *plat_priv, u32 rc_num)
@@ -6942,15 +7072,24 @@ cnss_pci_restore_rc_speed(struct cnss_pci_data *pci_priv)
 		if (ret)
 			cnss_pr_err("Failed to reset max PCIe RC%x link speed to default, err = %d\n",
 				     plat_priv->rc_num, ret);
-
-		/* suspend/resume will trigger retain to re-establish link speed */
-		ret = cnss_suspend_pci_link(pci_priv);
-		if (ret)
-			cnss_pr_err("Failed to suspend PCI link, err = %d\n", ret);
-
-		ret = cnss_resume_pci_link(pci_priv);
-		cnss_pr_err("Failed to resume PCI link, err = %d\n", ret);
 	}
+}
+
+static void
+cnss_pci_link_retrain_trigger(struct cnss_pci_data *pci_priv)
+{
+	int ret;
+
+	/* suspend/resume will trigger retain to re-establish link speed */
+	ret = cnss_suspend_pci_link(pci_priv);
+	if (ret)
+		cnss_pr_err("Failed to suspend PCI link, err = %d\n", ret);
+
+	ret = cnss_resume_pci_link(pci_priv);
+	if (ret)
+		cnss_pr_err("Failed to resume PCI link, err = %d\n", ret);
+
+	cnss_pci_get_link_status(pci_priv);
 }
 #else
 static void
@@ -6962,7 +7101,35 @@ static void
 cnss_pci_restore_rc_speed(struct cnss_pci_data *pci_priv)
 {
 }
+
+static void
+cnss_pci_link_retrain_trigger(struct cnss_pci_data *pci_priv)
+{
+}
 #endif
+
+static void cnss_pci_suspend_pwroff(struct pci_dev *pci_dev)
+{
+	struct cnss_pci_data *pci_priv = cnss_get_pci_priv(pci_dev);
+	int rc_num = pci_dev->bus->domain_nr;
+	struct cnss_plat_data *plat_priv;
+	int ret = 0;
+	bool suspend_pwroff = cnss_should_suspend_pwroff(pci_dev);
+
+	plat_priv = cnss_get_plat_priv_by_rc_num(rc_num);
+
+	if (suspend_pwroff) {
+		ret = cnss_suspend_pci_link(pci_priv);
+		if (ret)
+			cnss_pr_err("Failed to suspend PCI link, err = %d\n",
+				    ret);
+		cnss_power_off_device(plat_priv);
+	} else {
+		cnss_pr_dbg("bus suspend and dev power off disabled for device [0x%x]\n",
+			    pci_dev->device);
+		cnss_pci_link_retrain_trigger(pci_priv);
+	}
+}
 
 static int cnss_pci_probe(struct pci_dev *pci_dev,
 			  const struct pci_device_id *id)
@@ -7029,6 +7196,8 @@ static int cnss_pci_probe(struct pci_dev *pci_dev,
 
 	/* update drv support flag */
 	cnss_pci_update_drv_supported(pci_priv);
+
+	cnss_update_supported_link_info(pci_priv);
 
 	ret = cnss_reg_pci_event(pci_priv);
 	if (ret) {
@@ -7123,6 +7292,7 @@ static void cnss_pci_remove(struct pci_dev *pci_dev)
 	clear_bit(CNSS_PCI_PROBE_DONE, &plat_priv->driver_state);
 	cnss_pci_unregister_driver_hdlr(pci_priv);
 	cnss_pci_free_aux_mem(pci_priv);
+	cnss_pci_free_tme_lite_mem(pci_priv);
 	cnss_pci_free_m3_mem(pci_priv);
 	cnss_pci_free_fw_mem(pci_priv);
 	cnss_pci_free_qdss_mem(pci_priv);
