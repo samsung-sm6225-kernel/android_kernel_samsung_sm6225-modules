@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
  * Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.
  */
 
@@ -4980,6 +4980,7 @@ static int _sde_hardware_pre_caps(struct sde_mdss_cfg *sde_cfg, uint32_t hw_rev)
 		sde_cfg->ctl_rev = SDE_CTL_CFG_VERSION_1_0_0;
 		sde_cfg->sui_block_xin_mask = 0xC61;
 		clear_bit(SDE_FEATURE_HDR, sde_cfg->features);
+		set_bit(SDE_FEATURE_DECIMATION, sde_cfg->features);
 		set_bit(SDE_FEATURE_VBIF_DISABLE_SHAREABLE, sde_cfg->features);
 	} else if (IS_BENGAL_TARGET(hw_rev)) {
 		set_bit(SDE_FEATURE_QSYNC, sde_cfg->features);
