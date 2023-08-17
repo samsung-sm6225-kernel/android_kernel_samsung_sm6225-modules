@@ -2043,8 +2043,7 @@ static const struct adreno_gen7_core adreno_gpu_core_gen7_2_0 = {
 		.compatible = "qcom,adreno-gpu-gen7-2-0",
 		.features = ADRENO_APRIV | ADRENO_IOCOHERENT | ADRENO_IFPC |
 				ADRENO_CONTENT_PROTECTION | ADRENO_ACD |
-				ADRENO_LPAC | ADRENO_BCL | ADRENO_L3_VOTE |
-				ADRENO_PREEMPTION,
+				ADRENO_LPAC | ADRENO_BCL | ADRENO_L3_VOTE,
 		.gpudev = &adreno_gen7_hwsched_gpudev.base,
 		.perfcounters = &adreno_gen7_hwsched_perfcounters,
 		.uche_gmem_alignment = SZ_16M,
@@ -2078,8 +2077,7 @@ static const struct adreno_gen7_core adreno_gpu_core_gen7_2_1 = {
 		.compatible = "qcom,adreno-gpu-gen7-2-1",
 		.features = ADRENO_APRIV | ADRENO_IOCOHERENT | ADRENO_IFPC |
 				ADRENO_CONTENT_PROTECTION | ADRENO_LPAC |
-				ADRENO_BCL | ADRENO_L3_VOTE | ADRENO_ACD |
-				ADRENO_PREEMPTION,
+				ADRENO_BCL | ADRENO_L3_VOTE | ADRENO_ACD,
 		.gpudev = &adreno_gen7_hwsched_gpudev.base,
 		.perfcounters = &adreno_gen7_hwsched_perfcounters,
 		.uche_gmem_alignment = SZ_16M,
@@ -2223,13 +2221,15 @@ static const struct adreno_gen7_core adreno_gpu_core_gen7_9_0 = {
 	.bcl_data = 1,
 };
 
+extern const struct gen7_snapshot_block_list gen7_14_0_snapshot_block_list;
+
 static const struct adreno_gen7_core adreno_gpu_core_gen7_14_0 = {
 	.base = {
 		DEFINE_ADRENO_REV(ADRENO_REV_GEN7_14_0,
 				  UINT_MAX, UINT_MAX, UINT_MAX, ANY_ID),
 		.compatible = "qcom,adreno-gpu-gen7-14-0",
 		.features = ADRENO_APRIV | ADRENO_IOCOHERENT | ADRENO_CONTENT_PROTECTION |
-			ADRENO_PREEMPTION,
+			ADRENO_PREEMPTION | ADRENO_IFPC,
 		.gpudev = &adreno_gen7_gmu_gpudev.base,
 		.perfcounters = &adreno_gen7_perfcounters,
 		.uche_gmem_alignment = 0,
@@ -2249,7 +2249,7 @@ static const struct adreno_gen7_core adreno_gpu_core_gen7_14_0 = {
 	.hang_detect_cycles = 0xcfffff,
 	.protected_regs = gen7_0_0_protected_regs,
 	.highest_bank_bit = 15,
-	.gen7_snapshot_block_list = &gen7_0_0_snapshot_block_list,
+	.gen7_snapshot_block_list = &gen7_14_0_snapshot_block_list,
 	.preempt_level = 1,
 };
 
