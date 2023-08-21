@@ -196,9 +196,9 @@ static int besbev_init_reg(struct snd_soc_component *component,
 						0x71, 0x41);
 
 		snd_soc_component_update_bits(component, BESBEV_TAGC_CTL,
-						0x30, 0x10);
+						0x0E, 0x0A);
 		snd_soc_component_update_bits(component, BESBEV_TAGC_TIME,
-						0x30, 0x30);
+						0x30, 0x10);
 		snd_soc_component_update_bits(component, BESBEV_TAGC_E2E_GAIN,
 						0x1F, 0x04);
 		snd_soc_component_update_bits(component, BESBEV_TAGC_CTL,

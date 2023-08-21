@@ -70,7 +70,7 @@ static int audio_prm_callback(struct gpr_device *adev, void *data)
 			atomic_set(&g_prm.state, payload[1]);
 			break;
 		default:
-			pr_err("%s: hit default case",__func__);
+			pr_info("%s: hit default case",__func__);
 			break;
 		};
 	default:
