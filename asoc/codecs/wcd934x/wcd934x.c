@@ -189,6 +189,7 @@ enum {
 	ANC_MIC_AMIC4,
 	CLK_INTERNAL,
 	CLK_MODE,
+	WCD_SUPPLIES_LPM_MODE,
 };
 
 enum {
@@ -10696,15 +10697,31 @@ static int tavil_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tavil_priv *tavil = platform_get_drvdata(pdev);
+	struct wcd9xxx *wcd9xxx = NULL;
+	struct wcd9xxx_pdata *pdata = NULL;
+	struct snd_soc_component *component = NULL;
 
 	if (!tavil) {
 		dev_err(dev, "%s: tavil private data is NULL\n", __func__);
 		return -EINVAL;
 	}
+
+	wcd9xxx   = tavil->wcd9xxx;
+	component = tavil->component;
+	pdata     = dev_get_platdata(component->dev->parent);
+
 	dev_dbg(dev, "%s: system suspend\n", __func__);
 	if (delayed_work_pending(&tavil->power_gate_work) &&
 	    cancel_delayed_work_sync(&tavil->power_gate_work))
 		tavil_codec_power_gate_digital_core(tavil);
+
+	msm_cdc_set_supplies_lpm_mode(wcd9xxx->dev,
+			wcd9xxx->supplies,
+			pdata->regulator,
+			pdata->num_supplies,
+			true);
+	set_bit(WCD_SUPPLIES_LPM_MODE, &tavil->status_mask);
+
 	return 0;
 }
 
@@ -10712,12 +10729,29 @@ static int tavil_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct tavil_priv *tavil = platform_get_drvdata(pdev);
+	struct wcd9xxx *wcd9xxx = NULL;
+	struct wcd9xxx_pdata *pdata = NULL;
+	struct snd_soc_component *component = NULL;
 
 	if (!tavil) {
 		dev_err(dev, "%s: tavil private data is NULL\n", __func__);
 		return -EINVAL;
 	}
 	dev_dbg(dev, "%s: system resume\n", __func__);
+
+	wcd9xxx   = tavil->wcd9xxx;
+	component = tavil->component;
+	pdata     = dev_get_platdata(component->dev->parent);
+
+	if (test_bit(WCD_SUPPLIES_LPM_MODE, &tavil->status_mask)) {
+		msm_cdc_set_supplies_lpm_mode(wcd9xxx->dev,
+				wcd9xxx->supplies,
+				pdata->regulator,
+				pdata->num_supplies,
+				false);
+		clear_bit(WCD_SUPPLIES_LPM_MODE, &tavil->status_mask);
+	}
+
 	return 0;
 }
 
