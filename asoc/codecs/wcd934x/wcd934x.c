@@ -45,6 +45,7 @@
 #include <asoc/wcd9xxx-resmgr-v2.h>
 #include <asoc/wcdcal-hwdep.h>
 #include <asoc/wcd9xxx_registers.h>
+#include <linux/qti-regmap-debugfs.h>
 #include <ipc/gpr-lite.h>
 #include "wcd934x-dsd.h"
 
@@ -10478,6 +10479,8 @@ static int tavil_soc_codec_probe(struct snd_soc_component *component)
 	control = dev_get_drvdata(component->dev->parent);
 
 	snd_soc_component_init_regmap(component, control->regmap);
+
+	devm_regmap_qti_debugfs_register(control->dev->parent, control->regmap);
 
 	dev_info(component->dev, "%s()\n", __func__);
 	tavil = snd_soc_component_get_drvdata(component);
