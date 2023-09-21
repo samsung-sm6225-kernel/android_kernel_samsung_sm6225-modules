@@ -83,10 +83,12 @@ static struct kgsl_iommu_pt *to_iommu_pt(struct kgsl_pagetable *pagetable)
 
 static u32 get_llcc_flags(struct kgsl_mmu *mmu)
 {
-	if (mmu->subtype == KGSL_IOMMU_SMMU_V500)
-		return IOMMU_USE_LLC_NWA;
-	else
-		return IOMMU_USE_UPSTREAM_HINT;
+	/* Return no-write-allocate if mmu feature for no-write-allocate is set */
+	if (test_bit(KGSL_MMU_FORCE_LLCC_NWA, &mmu->features))
+		return IOMMU_SYS_CACHE_NWA;
+
+	/* Return write allocate as default llcc allocation policy */
+	return IOMMU_SYS_CACHE;
 }
 
 static int _iommu_get_protection_flags(struct kgsl_mmu *mmu,
@@ -1289,7 +1291,7 @@ static void _enable_gpuhtw_llc(struct kgsl_mmu *mmu, struct iommu_domain *domain
 		iommu_set_pgtable_quirks(domain, IO_PGTABLE_QUIRK_ARM_OUTER_WBWA);
 }
 
-static int set_smmu_aperture(struct kgsl_device *device,
+int kgsl_set_smmu_aperture(struct kgsl_device *device,
 		struct kgsl_iommu_context *context)
 {
 	int ret;
@@ -2318,7 +2320,7 @@ static int iommu_probe_user_context(struct kgsl_device *device,
 	/* Enable TTBR0 on the default and LPAC contexts */
 	kgsl_iommu_set_ttbr0(&iommu->user_context, mmu, &pt->info.cfg);
 
-	set_smmu_aperture(device, &iommu->user_context);
+	kgsl_set_smmu_aperture(device, &iommu->user_context);
 
 	kgsl_iommu_set_ttbr0(&iommu->lpac_context, mmu, &pt->info.cfg);
 
