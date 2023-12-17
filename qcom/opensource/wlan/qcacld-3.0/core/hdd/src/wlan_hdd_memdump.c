@@ -213,6 +213,7 @@ static ssize_t hdd_driver_memdump_read(struct file *file, char __user *buf,
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0))
 static const struct proc_ops driver_dump_fops = {
 	.proc_read = hdd_driver_memdump_read,
+	.proc_lseek = default_llseek,
 };
 #else
 static const struct file_operations driver_dump_fops = {

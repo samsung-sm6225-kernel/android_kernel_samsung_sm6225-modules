@@ -2379,6 +2379,10 @@ struct hdd_context {
 #ifdef WLAN_SUPPORT_TWT
 	qdf_work_t twt_en_dis_work;
 #endif
+#ifdef SEC_CONFIG_WLAN_BEACON_CHECK
+	qdf_mc_timer_t skip_bmiss_set_timer;
+	bool bmiss_set_last;
+#endif /* SEC_CONFIG_WLAN_BEACON_CHECK */
 	bool is_wifi3_0_target;
 	bool dump_in_progress;
 	uint64_t bw_vote_time;

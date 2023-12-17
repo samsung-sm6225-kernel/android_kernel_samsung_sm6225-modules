@@ -53,7 +53,105 @@ ifeq ($(call cc-option-yn, -Wheader-guard),y)
 EXTRA_CFLAGS += -Wheader-guard
 endif
 
+
 ######### CONFIG_MSM_TOUCH ########
+
+	LINUX_INC += -include $(TOUCH_ROOT)/ilitek/ilitek_v3.h
+	LINUX_INC += -include $(TOUCH_ROOT)/ilitek/firmware/ilitek_v3_fw.h
+
+		ilitek-y := \
+			./ilitek/ilitek_v3.o \
+			./ilitek/ilitek_v3_spi.o \
+			./ilitek/ilitek_v3_qcom.o \
+			./ilitek/ilitek_v3_ic.o \
+			./ilitek/ilitek_v3_touch.o \
+			./ilitek/ilitek_v3_mp.o \
+			./ilitek/ilitek_v3_node.o \
+			./ilitek/ilitek_v3_hostdl.o \
+			#./ilitek/ilitek_v3_flash.o \
+			#./ilitek/ilitek_v3_i2c.o \
+			#./ilitek/ilitek_v3_mtk.o
+
+			obj-m += ilitek.o
+
+     LINUX_INC += -include $(TOUCH_ROOT)/lct_tp_selftest.h
+
+         lct_tp-y := \
+             ./lct_tp_selftest.o \
+
+             obj-m += lct_tp.o
+
+    LINUX_INC += -include $(TOUCH_ROOT)/lct_tp_info.h
+
+        tp_info-y := \
+            ./lct_tp_info.o \
+
+            obj-m += tp_info.o
+
+### sec_tsp class sysfs Feature start ###
+ifeq ($(SEC_SAMSUNG_EXPERIENCE_PLATFORM_CATEGORY), sep_lite_new)
+$(warning "Samsung sec_tsp class_sysfs Feature")
+    LINUX_INC += -include $(TOUCH_ROOT)/sec_cmd.h
+    cmd-y := \
+        ./sec_cmd.o \
+
+    obj-m += cmd.o
+
+else
+$(warning "longcheer sec_tsp class_sysfs Feature")
+    CDEFINES += -DCFG_TP_TSP_SYSFS
+    LINUX_INC += -include $(TOUCH_ROOT)/sec_class.h
+
+    sec-y := \
+        ./sec_class.o \
+
+    obj-m += sec.o
+
+    LINUX_INC += -include $(TOUCH_ROOT)/sec_cmd.h
+
+    cmd-y := \
+        ./sec_cmd.o \
+
+    obj-m += cmd.o
+
+endif
+### sec_tsp class sysfs Feature end ###
+### icnl9922c start ###
+
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_builtin_firmware.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_charger_detect.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_config.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_core.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_earjack_detect.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_firmware.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_oem.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_platform.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_sfctrl.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_spi_flash.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_strerror.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_sysfs.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_tcs.h
+	LINUX_INC += -include $(TOUCH_ROOT)/icnl9922c/cts_test.h
+
+	icnl9922c-y := \
+		./icnl9922c/cts_driver.o \
+		./icnl9922c/cts_core.o \
+		./icnl9922c/cts_sfctrlv2.o \
+		./icnl9922c/cts_spi_flash.o \
+		./icnl9922c/cts_firmware.o \
+		./icnl9922c/cts_test.o \
+		./icnl9922c/cts_charger_detect.o \
+		./icnl9922c/cts_earjack_detect.o \
+		./icnl9922c/cts_tcs.o \
+		./icnl9922c/cts_platform.o \
+		./icnl9922c/cts_tool.o \
+		./icnl9922c/cts_sysfs.o \
+		./icnl9922c/cts_strerror.o \
+		./icnl9922c/cts_oem.o
+
+	obj-m += icnl9922c.o
+
+###  icnl9922c end  ###
 
 ifeq ($(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX), y)
 
@@ -208,6 +306,8 @@ ifneq ($(CONFIG_ARCH_PINEAPPLE), y)
 
 			obj-$(CONFIG_MSM_TOUCH) += raydium_ts.o
 	endif
+
+
 endif # pineapple
 
 CDEFINES += -DBUILD_TIMESTAMP=\"$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')\"

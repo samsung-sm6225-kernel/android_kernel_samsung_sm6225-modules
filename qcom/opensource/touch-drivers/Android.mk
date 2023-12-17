@@ -32,6 +32,9 @@ ifeq ($(TOUCH_DLKM_ENABLE),  true)
 	KBUILD_OPTIONS += MODNAME=touch_dlkm
 	KBUILD_OPTIONS += BOARD_PLATFORM=$(TARGET_BOARD_PLATFORM)
 	KBUILD_OPTIONS += $(TOUCH_SELECT)
+	ifeq ($(SEC_SAMSUNG_EXPERIENCE_PLATFORM_CATEGORY), FACTORY)
+		KBUILD_OPTIONS += KCPPFLAGS=-DFACTORY_MODE_GKI_DISABLE
+	endif
 
 	###########################################################
 	include $(CLEAR_VARS)
@@ -43,6 +46,73 @@ ifeq ($(TOUCH_DLKM_ENABLE),  true)
 	LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
 	include $(DLKM_DIR)/Build_external_kernelmodule.mk
 	###########################################################
+
+	###########################################################
+	include $(CLEAR_VARS)
+	LOCAL_SRC_FILES   := $(wildcard $(LOCAL_PATH)/**/*) $(wildcard $(LOCAL_PATH)/*)
+	LOCAL_MODULE              := ilitek.ko
+	LOCAL_MODULE_KBUILD_NAME  := ilitek.ko
+	LOCAL_MODULE_TAGS         := optional
+	#LOCAL_MODULE_DEBUG_ENABLE := true
+	LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
+	include $(DLKM_DIR)/Build_external_kernelmodule.mk
+	###########################################################
+
+	###########################################################
+	include $(CLEAR_VARS)
+	LOCAL_SRC_FILES   := $(wildcard $(LOCAL_PATH)/**/*) $(wildcard $(LOCAL_PATH)/*)
+	LOCAL_MODULE              := icnl9922c.ko
+	LOCAL_MODULE_KBUILD_NAME  := icnl9922c.ko
+	LOCAL_MODULE_TAGS         := optional
+	#LOCAL_MODULE_DEBUG_ENABLE := true
+	LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
+	include $(DLKM_DIR)/Build_external_kernelmodule.mk
+	###########################################################
+
+        ###########################################################
+        include $(CLEAR_VARS)
+        LOCAL_SRC_FILES   := $(wildcard $(LOCAL_PATH)/**/*) $(wildcard $(LOCAL_PATH)/*)
+        LOCAL_MODULE              := lct_tp.ko
+        LOCAL_MODULE_KBUILD_NAME  := lct_tp.ko
+        LOCAL_MODULE_TAGS         := optional
+        #LOCAL_MODULE_DEBUG_ENABLE := true
+        LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
+        include $(DLKM_DIR)/Build_external_kernelmodule.mk
+        ###########################################################
+
+    ###########################################################
+    include $(CLEAR_VARS)
+    LOCAL_SRC_FILES   := $(wildcard $(LOCAL_PATH)/**/*) $(wildcard $(LOCAL_PATH)/*)
+    LOCAL_MODULE              := tp_info.ko
+    LOCAL_MODULE_KBUILD_NAME  := tp_info.ko
+    LOCAL_MODULE_TAGS         := optional
+    #LOCAL_MODULE_DEBUG_ENABLE := true
+    LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
+    include $(DLKM_DIR)/Build_external_kernelmodule.mk
+    ###########################################################
+
+ifneq ($(SEC_SAMSUNG_EXPERIENCE_PLATFORM_CATEGORY), sep_lite_new)
+    ###########################################################
+    include $(CLEAR_VARS)
+    LOCAL_SRC_FILES   := $(wildcard $(LOCAL_PATH)/**/*) $(wildcard $(LOCAL_PATH)/*)
+    LOCAL_MODULE              := sec.ko
+    LOCAL_MODULE_KBUILD_NAME  := sec.ko
+    LOCAL_MODULE_TAGS         := optional
+    #LOCAL_MODULE_DEBUG_ENABLE := true
+    LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
+    include $(DLKM_DIR)/Build_external_kernelmodule.mk
+    ###########################################################
+endif
+    ###########################################################
+    include $(CLEAR_VARS)
+    LOCAL_SRC_FILES   := $(wildcard $(LOCAL_PATH)/**/*) $(wildcard $(LOCAL_PATH)/*)
+    LOCAL_MODULE              := cmd.ko
+    LOCAL_MODULE_KBUILD_NAME  := cmd.ko
+    LOCAL_MODULE_TAGS         := optional
+    #LOCAL_MODULE_DEBUG_ENABLE := true
+    LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
+    include $(DLKM_DIR)/Build_external_kernelmodule.mk
+    ###########################################################
 
 	###########################################################
 	include $(CLEAR_VARS)

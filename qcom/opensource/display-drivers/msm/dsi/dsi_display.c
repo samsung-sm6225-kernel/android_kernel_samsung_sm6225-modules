@@ -234,6 +234,13 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 
 	panel = dsi_display->panel;
 
+	/* add delay when panel sleep out */
+	if (!strcmp(panel->name, "ili77600a tm 90hz video mode panel with DSC")) {
+		if ((0 == panel->bl_config.bl_level) && bl_lvl) {
+			mdelay(40);
+		}
+	}
+
 	mutex_lock(&panel->panel_lock);
 	if (!dsi_panel_initialized(panel)) {
 		rc = -EINVAL;
@@ -597,7 +604,7 @@ static bool dsi_display_validate_reg_read(struct dsi_panel *panel)
 		for (i = 0; i < len; ++i) {
 			if (config->return_buf[i] !=
 				config->status_value[group + i]) {
-				DRM_ERROR("mismatch: 0x%x\n",
+				DRM_ERROR("[ESD] mismatch: 0x%x\n",
 						config->return_buf[i]);
 				break;
 			}
@@ -854,7 +861,7 @@ static int dsi_display_status_reg_read(struct dsi_display *display)
 
 	rc = dsi_display_validate_status(m_ctrl, display);
 	if (rc <= 0) {
-		DSI_ERR("[%s] read status failed on master,rc=%d\n",
+		DSI_ERR("[ESD][%s] read status failed on master,rc=%d\n",
 		       display->name, rc);
 		goto done;
 	}
@@ -869,7 +876,7 @@ static int dsi_display_status_reg_read(struct dsi_display *display)
 
 		rc = dsi_display_validate_status(ctrl, display);
 		if (rc <= 0) {
-			DSI_ERR("[%s] read status failed on slave,rc=%d\n",
+			DSI_ERR("[ESD][%s] read status failed on slave,rc=%d\n",
 			       display->name, rc);
 			goto done;
 		}

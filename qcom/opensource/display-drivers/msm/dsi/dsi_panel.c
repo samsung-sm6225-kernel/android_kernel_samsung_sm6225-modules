@@ -18,6 +18,23 @@
 #include "sde_dsc_helper.h"
 #include "sde_vdc_helper.h"
 
+int g_bl_level_flag = 1;
+int double_click_flag = 0;
+EXPORT_SYMBOL(double_click_flag);
+
+/** tp ddi start **/
+struct ilitek_resume_ddi {
+	unsigned int flag;
+	void (*ddi_func)(void);
+};
+
+struct ilitek_resume_ddi ili_ddi = {
+	.flag = 0,
+	.ddi_func = NULL,
+};
+EXPORT_SYMBOL(ili_ddi);
+/** tp ddi end **/
+
 /**
  * topology is currently defined by a set of following 3 values:
  * 1. num of layer mixers
@@ -38,6 +55,9 @@
 #define MIN_PREFILL_LINES      40
 #define RSCC_MODE_THRESHOLD_TIME_US 40
 #define DCS_COMMAND_THRESHOLD_TIME_US 40
+
+static char g_lcd_name[128];
+static struct kobject *msm_lcd_name;
 
 static void dsi_dce_prepare_pps_header(char *buf, u32 pps_delay_ms)
 {
@@ -115,6 +135,22 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 	int rc = 0;
 	struct dsi_panel_reset_config *r_config = &panel->reset_config;
 
+	if (gpio_is_valid(r_config->lcd_bias_vsp)) {
+		rc = gpio_request(r_config->lcd_bias_vsp, "lcd_bias_vsp");
+		if (rc) {
+			DSI_ERR("request for lcd_bias_vsp failed, rc=%d\n", rc);
+			goto lcd_vsp_error;
+		}
+	}
+
+	if (gpio_is_valid(r_config->lcd_bias_vsn)) {
+		rc = gpio_request(r_config->lcd_bias_vsn, "lcd_bias_vsn");
+		if (rc) {
+			DSI_ERR("request for lcd_bias_vsn failed, rc=%d\n", rc);
+			goto lcd_bsn_error;
+		}
+	}
+
 	if (gpio_is_valid(r_config->reset_gpio)) {
 		rc = gpio_request(r_config->reset_gpio, "reset_gpio");
 		if (rc) {
@@ -168,6 +204,12 @@ error_release_reset:
 	if (gpio_is_valid(r_config->reset_gpio))
 		gpio_free(r_config->reset_gpio);
 error:
+
+lcd_bsn_error:
+	if (gpio_is_valid(r_config->lcd_bias_vsp))
+		gpio_free(r_config->lcd_bias_vsp);
+lcd_vsp_error:
+
 	return rc;
 }
 
@@ -190,6 +232,12 @@ static int dsi_panel_gpio_release(struct dsi_panel *panel)
 
 	if (gpio_is_valid(panel->panel_test_gpio))
 		gpio_free(panel->panel_test_gpio);
+
+	if (gpio_is_valid(r_config->lcd_bias_vsn))
+		gpio_free(r_config->lcd_bias_vsn);
+
+	if (gpio_is_valid(r_config->lcd_bias_vsp))
+		gpio_free(r_config->lcd_bias_vsp);
 
 	return rc;
 }
@@ -258,6 +306,8 @@ static int dsi_panel_reset(struct dsi_panel *panel)
 	int rc = 0;
 	struct dsi_panel_reset_config *r_config = &panel->reset_config;
 	int i;
+
+	DSI_INFO("%s\n", __func__);
 
 	if (!gpio_is_valid(r_config->reset_gpio))
 		goto skip_reset_gpio;
@@ -350,10 +400,11 @@ static int dsi_panel_set_pinctrl_state(struct dsi_panel *panel, bool enable)
 	return rc;
 }
 
-
 static int dsi_panel_power_on(struct dsi_panel *panel)
 {
 	int rc = 0;
+
+	DSI_INFO("%s\n", __func__);
 
 	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
 	if (rc) {
@@ -362,12 +413,26 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 		goto exit;
 	}
 
+	if (gpio_is_valid(panel->reset_config.lcd_bias_vsp))
+		gpio_set_value(panel->reset_config.lcd_bias_vsp, 1);
+
+	DSI_INFO("[%s] lcd_bias_vsp set high\n", __func__);
+	mdelay(2);
+
+	if (gpio_is_valid(panel->reset_config.lcd_bias_vsn))
+		gpio_direction_output(panel->reset_config.lcd_bias_vsn, 1);
+	DSI_INFO("[%s] lcd_bias_vsn set high\n", __func__);
+	mdelay(2);
+
 	rc = dsi_panel_set_pinctrl_state(panel, true);
 	if (rc) {
 		DSI_ERR("[%s] failed to set pinctrl, rc=%d\n", panel->name, rc);
 		goto error_disable_vregs;
 	}
-
+    DSI_INFO("[ILITEK]ili_ddi.flag=%d\n", ili_ddi.flag);
+    if (ili_ddi.flag) {
+        ili_ddi.ddi_func();
+    }
 	rc = dsi_panel_reset(panel);
 	if (rc) {
 		DSI_ERR("[%s] failed to reset panel, rc=%d\n", panel->name, rc);
@@ -401,13 +466,21 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 		return rc;
 	}
 
+	DSI_INFO("%s\n", __func__);
+
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
-	if (gpio_is_valid(panel->reset_config.reset_gpio) &&
+	DSI_INFO("%s double_click_flag = %d\n", __func__, double_click_flag);
+	if (double_click_flag == 0) {
+#if 0
+		if (gpio_is_valid(panel->reset_config.reset_gpio) &&
 					!panel->reset_gpio_always_on)
-		gpio_set_value(panel->reset_config.reset_gpio, 0);
-
+			gpio_set_value(panel->reset_config.reset_gpio, 0);
+#endif
+	} else {
+		DSI_INFO("%s double click wake up enable!!!\n", __func__);
+	}
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
 
@@ -422,6 +495,21 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	if (rc) {
 		DSI_ERR("[%s] failed set pinctrl state, rc=%d\n", panel->name,
 		       rc);
+	}
+	mdelay(2);
+
+	if (double_click_flag == 0) {
+		if (gpio_is_valid(panel->reset_config.lcd_bias_vsn))
+			gpio_direction_output(panel->reset_config.lcd_bias_vsn, 0);
+		DSI_INFO("[%s] lcd_bias_vsn set low\n", __func__);
+		mdelay(2);
+
+		if (gpio_is_valid(panel->reset_config.lcd_bias_vsp))
+			gpio_set_value(panel->reset_config.lcd_bias_vsp, 0);
+		DSI_INFO("[%s] lcd_bias_vsp set low\n", __func__);
+		mdelay(2);
+	} else {
+		DSI_INFO("%s double click wake up enable!!!\n", __func__);
 	}
 
 	rc = dsi_pwr_enable_regulator(&panel->power_info, false);
@@ -565,11 +653,23 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 		return -EINVAL;
 	}
 
+	// ignore default max brihtness setting
+	if (1 == g_bl_level_flag) {
+		g_bl_level_flag = 0;
+		DSI_ERR("Ignore setting max brightness when enter android.\n");
+		return rc;
+	}
+
 	dsi = &panel->mipi_device;
 	if (unlikely(panel->bl_config.lp_mode)) {
 		mode_flags = dsi->mode_flags;
 		dsi->mode_flags |= MIPI_DSI_MODE_LPM;
 	}
+
+	DSI_ERR("[%s] bl_lvl=%d\n",__func__, bl_lvl);
+
+	//bl 255 Maps to 4095
+	bl_lvl = bl_lvl * 4095 / 255;
 
 	if (panel->bl_config.bl_inverted_dbv)
 		bl_lvl = (((bl_lvl & 0xff) << 8) | (bl_lvl >> 8));
@@ -644,6 +744,7 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 		return 0;
 
 	DSI_DEBUG("backlight type:%d lvl:%d\n", bl->type, bl_lvl);
+
 	switch (bl->type) {
 	case DSI_BACKLIGHT_WLED:
 		rc = backlight_device_set_brightness(bl->raw_bd, bl_lvl);
@@ -2386,6 +2487,7 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel)
 	const char *data;
 	struct dsi_parser_utils *utils = &panel->utils;
 	char *reset_gpio_name, *mode_set_gpio_name;
+	struct device_node *np = panel->panel_of_node;
 
 	if (!strcmp(panel->type, "primary")) {
 		reset_gpio_name = "qcom,platform-reset-gpio";
@@ -2416,6 +2518,23 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel)
 			DSI_DEBUG("[%s] platform-en-gpio is not set, rc=%d\n",
 				 panel->name, rc);
 		}
+	}
+
+	panel->reset_config.lcd_bias_vsp = utils->get_named_gpio(utils->data,
+					      "qcom,bias-enp-gpio", 0);
+	DSI_INFO("[%s] lcd_bias_vsp gpio %d\n", panel->name, panel->reset_config.lcd_bias_vsp);
+	if (!gpio_is_valid(panel->reset_config.lcd_bias_vsp) &&
+		!panel->host_config.ext_bridge_mode) {
+		DSI_ERR("[%s] lcd_bias_vsp gpio not set, rc=%d\n", __func__,
+			panel->reset_config.lcd_bias_vsp);
+	}
+
+	panel->reset_config.lcd_bias_vsn = of_get_named_gpio(np, "qcom,bias-enn-gpio", 0);
+	DSI_INFO("[%s] lcd_bias_vsn gpio %d\n", panel->name, panel->reset_config.lcd_bias_vsn);
+	if (!gpio_is_valid(panel->reset_config.lcd_bias_vsn) &&
+		!panel->host_config.ext_bridge_mode) {
+		DSI_ERR("[%s] lcd_bias_vsn gpio not set, rc=%d\n", __func__,
+			panel->reset_config.lcd_bias_vsn);
 	}
 
 	panel->reset_config.lcd_mode_sel_gpio = utils->get_named_gpio(
@@ -2514,6 +2633,8 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 			 panel->name, bl_type);
 		panel->bl_config.type = DSI_BACKLIGHT_UNKNOWN;
 	}
+
+	DSI_INFO("[%s] panel_name:%s.\n", __func__, panel->name);
 
 	data = utils->get_property(utils->data, "qcom,bl-update-flag", NULL);
 	if (!data) {
@@ -3498,6 +3619,11 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 	esd_config->esd_enabled = utils->read_bool(utils->data,
 		"qcom,esd-check-enabled");
 
+	#ifdef FACTORY_MODE_DISABLE_ESD
+		esd_config->esd_enabled = false;
+		DSI_ERR("[ESD] disable esd check at factory mode\n");
+	#endif
+
 	if (!esd_config->esd_enabled)
 		return 0;
 
@@ -3512,17 +3638,17 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 			if (panel->panel_mode == DSI_OP_CMD_MODE) {
 				esd_config->status_mode = ESD_MODE_PANEL_TE;
 			} else {
-				DSI_ERR("TE-ESD not valid for video mode\n");
+				DSI_ERR("[ESD] TE-ESD not valid for video mode\n");
 				rc = -EINVAL;
 				goto error;
 			}
 		} else {
-			DSI_ERR("No valid panel-status-check-mode string\n");
+			DSI_ERR("[ESD] No valid panel-status-check-mode string\n");
 			rc = -EINVAL;
 			goto error;
 		}
 	} else {
-		DSI_DEBUG("status check method not defined!\n");
+		DSI_ERR("[ESD] status check method not defined!\n");
 		rc = -EINVAL;
 		goto error;
 	}
@@ -3530,7 +3656,7 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 	if (panel->esd_config.status_mode == ESD_MODE_REG_READ) {
 		rc = dsi_panel_parse_esd_reg_read_configs(panel);
 		if (rc) {
-			DSI_ERR("failed to parse esd reg read mode params, rc=%d\n",
+			DSI_ERR("[ESD] failed to parse esd reg read mode params, rc=%d\n",
 						rc);
 			goto error;
 		}
@@ -3541,7 +3667,7 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 		esd_mode = "te_check";
 	}
 
-	DSI_DEBUG("ESD enabled with mode: %s\n", esd_mode);
+	DSI_INFO("[ESD] ESD enabled with mode: %s\n", esd_mode);
 
 	return 0;
 
@@ -3600,6 +3726,34 @@ static void dsi_panel_setup_vm_ops(struct dsi_panel *panel, bool trusted_vm_env)
 	}
 }
 
+static ssize_t lcd_name_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, sizeof(g_lcd_name), "%s\n", g_lcd_name);
+}
+static struct kobj_attribute panel_lcd_name =
+	__ATTR(lcd_name, 0644, lcd_name_show, NULL);
+
+static int msm_lcd_name_create_sysfs(void)
+{
+	int ret;
+	msm_lcd_name = kobject_create_and_add("android_lcd",NULL);
+
+	if (msm_lcd_name == NULL) {
+		DSI_ERR("msm_lcd_name_create_sysfs_ failed\n");
+		ret=-ENOMEM;
+		return ret;
+	}
+
+	ret = sysfs_create_file(msm_lcd_name, &panel_lcd_name.attr);
+
+	if (ret) {
+		DSI_ERR("%s failed \n",__func__);
+		kobject_del(msm_lcd_name);
+	}
+	return 0;
+}
+
 struct dsi_panel *dsi_panel_get(struct device *parent,
 				struct device_node *of_node,
 				struct device_node *parser_node,
@@ -3629,6 +3783,9 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 				"qcom,mdss-dsi-panel-name", NULL);
 	if (!panel->name)
 		panel->name = DSI_PANEL_DEFAULT_LABEL;
+
+	strcpy(g_lcd_name, panel->name);
+	msm_lcd_name_create_sysfs();
 
 	/*
 	 * Set panel type to LCD as default.
@@ -3712,7 +3869,7 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 
 	rc = dsi_panel_parse_esd_config(panel);
 	if (rc)
-		DSI_DEBUG("failed to parse esd config, rc=%d\n", rc);
+		DSI_ERR("[ESD] failed to parse esd config, rc=%d\n", rc);
 
 	rc = dsi_panel_vreg_get(panel);
 	if (rc) {
@@ -4331,6 +4488,8 @@ int dsi_panel_pre_prepare(struct dsi_panel *panel)
 		return -EINVAL;
 	}
 
+	DSI_INFO("%s\n", __func__);
+
 	mutex_lock(&panel->panel_lock);
 
 	/* If LP11_INIT is set, panel will be powered up during prepare() */
@@ -4493,6 +4652,8 @@ int dsi_panel_prepare(struct dsi_panel *panel)
 		DSI_ERR("invalid params\n");
 		return -EINVAL;
 	}
+
+	DSI_INFO("%s\n", __func__);
 
 	mutex_lock(&panel->panel_lock);
 
@@ -4806,6 +4967,8 @@ int dsi_panel_enable(struct dsi_panel *panel)
 		return -EINVAL;
 	}
 
+	DSI_INFO("%s\n", __func__);
+
 	mutex_lock(&panel->panel_lock);
 
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_ON);
@@ -4846,6 +5009,8 @@ int dsi_panel_post_enable(struct dsi_panel *panel)
 		return -EINVAL;
 	}
 
+	DSI_INFO("%s\n", __func__);
+
 	mutex_lock(&panel->panel_lock);
 
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_POST_ON);
@@ -4867,6 +5032,8 @@ int dsi_panel_pre_disable(struct dsi_panel *panel)
 		DSI_ERR("invalid params\n");
 		return -EINVAL;
 	}
+
+	DSI_INFO("%s\n", __func__);
 
 	mutex_lock(&panel->panel_lock);
 
@@ -4898,6 +5065,13 @@ int dsi_panel_disable(struct dsi_panel *panel)
 		DSI_DEBUG("TWM Enabled, skip panel disable\n");
 		return rc;
 	}
+
+	DSI_INFO("%s\n", __func__);
+
+	if (!strcmp(panel->name, "ili77600a tm 90hz video mode panel with DSC")) {
+		mdelay(5);
+	}
+
 	mutex_lock(&panel->panel_lock);
 
 	/* Avoid sending panel off commands when ESD recovery is underway */
@@ -4940,6 +5114,8 @@ int dsi_panel_unprepare(struct dsi_panel *panel)
 		return -EINVAL;
 	}
 
+	DSI_INFO("%s\n", __func__);
+
 	mutex_lock(&panel->panel_lock);
 
 	rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_SET_POST_OFF);
@@ -4962,6 +5138,8 @@ int dsi_panel_post_unprepare(struct dsi_panel *panel)
 		DSI_ERR("invalid params\n");
 		return -EINVAL;
 	}
+
+	DSI_INFO("%s\n", __func__);
 
 	mutex_lock(&panel->panel_lock);
 

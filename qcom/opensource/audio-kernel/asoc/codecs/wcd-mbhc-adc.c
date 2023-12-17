@@ -398,6 +398,8 @@ static int wcd_mbhc_adc_get_hs_thres(struct wcd_mbhc *mbhc)
 	int hs_threshold, micbias_mv;
 
 	micbias_mv = wcd_mbhc_get_micbias(mbhc);
+	pr_info("%s: micbias_mv %d \n", __func__, micbias_mv);
+	pr_debug("%s: micbias_mv %d \n", __func__, micbias_mv);
 	if (mbhc->hs_thr) {
 		if (mbhc->micb_mv == micbias_mv)
 			hs_threshold = mbhc->hs_thr;
@@ -408,6 +410,8 @@ static int wcd_mbhc_adc_get_hs_thres(struct wcd_mbhc *mbhc)
 		hs_threshold = ((WCD_MBHC_ADC_HS_THRESHOLD_MV *
 			micbias_mv) / WCD_MBHC_ADC_MICBIAS_MV);
 	}
+	pr_info("%s: hs_threshold %d\n", __func__, hs_threshold);
+	pr_debug("%s: hs_threshold %d\n", __func__, hs_threshold);
 	return hs_threshold;
 }
 
