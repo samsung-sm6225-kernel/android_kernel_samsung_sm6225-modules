@@ -760,6 +760,28 @@ void cnss_audio_smmu_unmap(struct device *dev, dma_addr_t iova, size_t size)
 }
 EXPORT_SYMBOL(cnss_audio_smmu_unmap);
 
+int cnss_get_fw_lpass_shared_mem(struct device *dev, dma_addr_t *iova,
+				 size_t *size)
+{
+	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
+	uint8_t i;
+
+	if (!plat_priv)
+		return -EINVAL;
+
+	for (i = 0; i < plat_priv->fw_mem_seg_len; i++) {
+		if (plat_priv->fw_mem[i].type ==
+		    QMI_WLFW_MEM_LPASS_SHARED_V01) {
+			*iova = plat_priv->fw_mem[i].pa;
+			*size = plat_priv->fw_mem[i].size;
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+EXPORT_SYMBOL(cnss_get_fw_lpass_shared_mem);
+
 int cnss_athdiag_read(struct device *dev, u32 offset, u32 mem_type,
 		      u32 data_len, u8 *output)
 {
@@ -1989,8 +2011,10 @@ void cnss_recovery_handler(struct cnss_plat_data *plat_priv)
 	msleep(POWER_RESET_MIN_DELAY_MS);
 
 	ret = cnss_bus_dev_powerup(plat_priv);
-	if (ret)
+	if (ret) {
 		__pm_relax(plat_priv->recovery_ws);
+		clear_bit(CNSS_DRIVER_RECOVERY, &plat_priv->driver_state);
+	}
 
 	return;
 }
@@ -2050,6 +2074,8 @@ static const char *cnss_recovery_reason_to_str(enum cnss_recovery_reason reason)
 static int cnss_do_recovery(struct cnss_plat_data *plat_priv,
 			    enum cnss_recovery_reason reason)
 {
+	int ret;
+
 	plat_priv->recovery_count++;
 
 	if (plat_priv->device_id == QCA6174_DEVICE_ID)
@@ -2122,7 +2148,9 @@ self_recovery:
 		return 0;
 	}
 
-	cnss_bus_dev_powerup(plat_priv);
+	ret = cnss_bus_dev_powerup(plat_priv);
+	if (ret)
+		clear_bit(CNSS_DRIVER_RECOVERY, &plat_priv->driver_state);
 
 	return 0;
 }
@@ -2550,6 +2578,9 @@ static void *cnss_get_fw_mem_pa_to_va(struct cnss_fw_mem *fw_mem,
 	u32 local_size;
 
 	for (i = 0; i < mem_seg_len; i++) {
+		if (i == QMI_WLFW_MEM_LPASS_SHARED_V01)
+			continue;
+
 		local_pa = (u64)fw_mem[i].pa;
 		local_size = (u32)fw_mem[i].size;
 		if (pa == local_pa && size <= local_size) {
