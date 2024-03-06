@@ -70,7 +70,7 @@ static int audio_prm_callback(struct gpr_device *adev, void *data)
 			atomic_set(&g_prm.state, payload[1]);
 			break;
 		default:
-			pr_info("%s: hit default case",__func__);
+			pr_err("%s: hit default case",__func__);
 			break;
 		};
 	default:
@@ -706,7 +706,7 @@ static int audio_prm_probe(struct gpr_device *adev)
 
 	init_waitqueue_head(&g_prm.wait);
 	g_prm.is_adsp_up = true;
-	pr_info("%s: prm probe success\n", __func__);
+	pr_err("%s: prm probe success\n", __func__);
 	return ret;
 }
 

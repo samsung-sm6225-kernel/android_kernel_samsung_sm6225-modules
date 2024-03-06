@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2021-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2021-2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/gpio.h>
@@ -51,7 +51,7 @@ static struct attribute device_state_attr = {
 
 static struct attribute card_state_attr = {
 	.name = "card_state",
-	.mode = 0666,
+	.mode = 0660,
 };
 
 #define MAX_PORT 20
@@ -233,10 +233,6 @@ static void check_userspace_service_state(struct snd_soc_pcm_runtime *rtd,
 			spf_core_apm_close_all();
 			/*unmap all dma mapped buffers*/
 			msm_audio_ion_crash_handler();
-#if IS_ENABLED(CONFIG_SND_SOC_PCIE)
-			/*clear pcie driver state*/
-			msm_pcm_pcie_crash_handler();
-#endif
 			pdata->dsp_sessions_closed = 1;
 		}
 		/*Reset the state as sysfs node wont be triggred*/

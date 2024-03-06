@@ -6298,8 +6298,7 @@ static int ipa3_setup_apps_pipes(void)
 
 	ipa3_ctx->clnt_hdl_data_in = 0;
 
-	if (ipa3_ctx->ipa_hw_type >= IPA_HW_v5_5 &&
-		!ipa3_ctx->ipa_config_is_apq_dma) {
+	if ( ipa3_ctx->ipa_hw_type >= IPA_HW_v5_5 ) {
 		/*
 		 * LAN_COAL IN (IPA->AP)
 		 */
@@ -8592,10 +8591,9 @@ static void ipa3_load_ipa_fw(struct work_struct *work)
 
 	if (ipa3_ctx->platform_type == IPA_PLAT_TYPE_APQ &&
 		ipa3_ctx->ipa3_hw_mode != IPA_HW_MODE_VIRTUAL &&
-		ipa3_ctx->ipa3_hw_mode != IPA_HW_MODE_EMULATION &&
-		!ipa3_ctx->ipa_config_is_apq_dma) {
+		ipa3_ctx->ipa3_hw_mode != IPA_HW_MODE_EMULATION) {
 
-		IPADBG("Loading IPA uC via PIL or MDT\n");
+		IPADBG("Loading IPA uC via PIL\n");
 
 		/* Unvoting will happen when uC loaded event received. */
 		ipa3_proxy_clk_vote(false);
@@ -8620,7 +8618,6 @@ static void ipa3_load_ipa_fw(struct work_struct *work)
 			return;
 		}
 		IPADBG("IPA uC loading succeeded\n");
-		ipa3_proxy_clk_unvote();
 	}
 }
 
@@ -9128,7 +9125,9 @@ static u32 get_ipa_gen_rx_cmn_page_pool_size(u32 rx_cmn_page_pool_size)
 {
         if (!rx_cmn_page_pool_size)
                 return IPA_GENERIC_RX_CMN_PAGE_POOL_SZ_FACTOR;
-        return rx_cmn_page_pool_size;
+        if (rx_cmn_page_pool_size <= IPA_GENERIC_RX_CMN_PAGE_POOL_SZ_FACTOR)
+                return rx_cmn_page_pool_size;
+        return IPA_GENERIC_RX_CMN_PAGE_POOL_SZ_FACTOR;
 }
 
 
@@ -9136,7 +9135,9 @@ static u32 get_ipa_gen_rx_cmn_temp_pool_size(u32 rx_cmn_temp_pool_size)
 {
         if (!rx_cmn_temp_pool_size)
                 return IPA_GENERIC_RX_CMN_TEMP_POOL_SZ_FACTOR;
-        return rx_cmn_temp_pool_size;
+        if (rx_cmn_temp_pool_size <= IPA_GENERIC_RX_CMN_TEMP_POOL_SZ_FACTOR)
+                return rx_cmn_temp_pool_size;
+        return IPA_GENERIC_RX_CMN_TEMP_POOL_SZ_FACTOR;
 }
 
 /**
@@ -9297,7 +9298,6 @@ static int ipa3_pre_init(const struct ipa3_plat_drv_res *resource_p,
         ipa3_ctx->ipa_gen_rx_cmn_temp_pool_sz_factor = get_ipa_gen_rx_cmn_temp_pool_size(
                         resource_p->ipa_gen_rx_cmn_temp_pool_sz_factor);
 	ipa3_ctx->ipa_config_is_auto = resource_p->ipa_config_is_auto;
-	ipa3_ctx->ipa_config_is_apq_dma = resource_p->ipa_config_is_apq_dma;
 	ipa3_ctx->ipa_mhi_proxy = resource_p->ipa_mhi_proxy;
 	ipa3_ctx->max_num_smmu_cb = resource_p->max_num_smmu_cb;
 	ipa3_ctx->hw_type_index = ipa3_get_hw_type_index();
@@ -9549,8 +9549,8 @@ static int ipa3_pre_init(const struct ipa3_plat_drv_res *resource_p,
 	atomic_set(&ipa3_ctx->ipa3_active_clients.cnt, 1);
 
 	/* Create workqueues for power management */
-	ipa3_ctx->power_mgmt_wq = alloc_workqueue("ipa_power_mgmt",
-			WQ_MEM_RECLAIM | WQ_UNBOUND | WQ_SYSFS | WQ_HIGHPRI, 1);
+	ipa3_ctx->power_mgmt_wq =
+		create_singlethread_workqueue("ipa_power_mgmt");
 	if (!ipa3_ctx->power_mgmt_wq) {
 		IPAERR("failed to create power mgmt wq\n");
 		result = -ENOMEM;
@@ -10262,7 +10262,6 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 	ipa_drv_res->skip_ieob_mask_wa = false;
 	ipa_drv_res->ipa_gpi_event_rp_ddr = false;
 	ipa_drv_res->ipa_config_is_auto = false;
-	ipa_drv_res->ipa_config_is_apq_dma = false;
 	ipa_drv_res->max_num_smmu_cb = IPA_SMMU_CB_MAX;
 	ipa_drv_res->ipa_endp_delay_wa_v2 = false;
 	ipa_drv_res->use_tput_est_ep = false;
@@ -10406,13 +10405,6 @@ static int get_ipa_dts_configuration(struct platform_device *pdev,
 		"qcom,ipa-config-is-auto");
 	IPADBG(": ipa-config-is-auto = %s\n",
 		ipa_drv_res->ipa_config_is_auto
-		? "True" : "False");
-
-	ipa_drv_res->ipa_config_is_apq_dma =
-		of_property_read_bool(pdev->dev.of_node,
-		"qcom,ipa-config-is-apq-dma");
-	IPADBG(": ipa-config-is-apq-dma = %s\n",
-		ipa_drv_res->ipa_config_is_apq_dma
 		? "True" : "False");
 
 	ipa_drv_res->ipa_wan_skb_page =

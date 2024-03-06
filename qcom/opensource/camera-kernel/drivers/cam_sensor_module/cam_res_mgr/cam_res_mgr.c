@@ -415,6 +415,7 @@ int cam_res_mgr_gpio_request(struct device *dev, uint gpio,
 	 *    from the gpio_res_list
 	 * These two situation both need request gpio.
 	 */
+	CAM_DBG(CAM_RES, "shared gpio enable is %d shared gpio num is %d", cam_res->shared_gpio_enabled, cam_res->dt.num_shared_gpio);
 	if (!found) {
 		rc = gpio_request_one(gpio, flags, label);
 		if (rc) {
@@ -477,7 +478,7 @@ int cam_res_mgr_gpio_request(struct device *dev, uint gpio,
 }
 EXPORT_SYMBOL(cam_res_mgr_gpio_request);
 
-static void cam_res_mgr_gpio_free(struct device *dev, uint gpio)
+void cam_res_mgr_gpio_free(struct device *dev, uint gpio)
 {
 	bool found = false;
 	bool need_free = true;
@@ -535,6 +536,7 @@ static void cam_res_mgr_gpio_free(struct device *dev, uint gpio)
 	if (need_free)
 		gpio_free(gpio);
 }
+EXPORT_SYMBOL(cam_res_mgr_gpio_free);
 
 void cam_res_mgr_gpio_free_arry(struct device *dev,
 		const struct gpio *array, size_t num)

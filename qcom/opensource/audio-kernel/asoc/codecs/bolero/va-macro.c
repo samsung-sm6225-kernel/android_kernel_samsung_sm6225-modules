@@ -180,7 +180,6 @@ struct va_macro_priv {
 	int dec_mode[VA_MACRO_NUM_DECIMATORS];
 	u16 current_clk_id;
 	int pcm_rate[VA_MACRO_NUM_DECIMATORS];
-	bool dev_up;
 };
 
 static bool va_macro_get_data(struct snd_soc_component *component,
@@ -326,7 +325,6 @@ static int va_macro_event_handler(struct snd_soc_component *component,
 		trace_printk("%s, enter SSR up\n", __func__);
 		/* reset swr after ssr/pdr */
 		va_priv->reset_swr = true;
-		va_priv->dev_up = true;
 		if (va_priv->swr_ctrl_data)
 			swrm_wcd_notify(
 				va_priv->swr_ctrl_data[0].va_swr_pdev,
@@ -336,7 +334,6 @@ static int va_macro_event_handler(struct snd_soc_component *component,
 		bolero_rsc_clk_reset(va_dev, VA_CORE_CLK);
 		break;
 	case BOLERO_MACRO_EVT_SSR_DOWN:
-		va_priv->dev_up = false;
 		if (va_priv->swr_ctrl_data) {
 			swrm_wcd_notify(
 				va_priv->swr_ctrl_data[0].va_swr_pdev,
@@ -440,31 +437,31 @@ static int va_macro_swr_pwr_event_v2(struct snd_soc_dapm_widget *w,
 		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
-		if (va_priv->current_clk_id == VA_CORE_CLK) {
+		if (va_priv->current_clk_id == VA_CORE_CLK &&
+			va_priv->va_swr_clk_cnt != 0 &&
+			va_priv->tx_clk_status) {
 			ret = bolero_clk_rsc_request_clock(va_priv->dev,
 					va_priv->default_clk_id,
 					TX_CORE_CLK,
 					true);
 			if (ret) {
-				dev_err(component->dev,
-					"%s: request clock TX_CLK enable failed\n",
+				dev_dbg(component->dev,
+					"%s: request clock TX_CLK disable failed\n",
 					__func__);
-				if (va_priv->dev_up)
-					break;
+				break;
 			}
 			ret = bolero_clk_rsc_request_clock(va_priv->dev,
 					va_priv->default_clk_id,
 					VA_CORE_CLK,
 					false);
 			if (ret) {
-				dev_err(component->dev,
+				dev_dbg(component->dev,
 					"%s: request clock VA_CLK disable failed\n",
 					__func__);
-				if (va_priv->dev_up)
-					bolero_clk_rsc_request_clock(va_priv->dev,
-						TX_CORE_CLK,
-						TX_CORE_CLK,
-						false);
+				bolero_clk_rsc_request_clock(va_priv->dev,
+					TX_CORE_CLK,
+					TX_CORE_CLK,
+					false);
 				break;
 			}
 			va_priv->current_clk_id = TX_CORE_CLK;
@@ -2875,8 +2872,6 @@ static int va_macro_init(struct snd_soc_component *component)
 		snd_soc_dapm_ignore_suspend(dapm, "VA SWR_MIC7");
 	}
 	snd_soc_dapm_sync(dapm);
-
-	va_priv->dev_up = true;
 
 	for (i = 0; i < VA_MACRO_NUM_DECIMATORS; i++) {
 		va_priv->va_hpf_work[i].va_priv = va_priv;

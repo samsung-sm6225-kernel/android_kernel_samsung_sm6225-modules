@@ -23,10 +23,8 @@ KBUILD_OPTIONS += BOARD_PLATFORM=$(TARGET_BOARD_PLATFORM)
 KBUILD_OPTIONS += $(DISPLAY_SELECT)
 
 ifneq ($(TARGET_BOARD_AUTO),true)
-ifneq ($(TARGET_BOARD_PLATFORM), trinket)
 KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS+=$(PWD)/$(call intermediates-dir-for,DLKM,mmrm-module-symvers)/Module.symvers
-endif
-ifneq ($(TARGET_BOARD_PLATFORM), taro bengal monaco trinket)
+ifneq ($(TARGET_BOARD_PLATFORM), taro bengal monaco)
 	KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS+=$(PWD)/$(call intermediates-dir-for,DLKM,msm-ext-disp-module-symvers)/Module.symvers
 	KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS+=$(PWD)/$(call intermediates-dir-for,DLKM,sec-module-symvers)/Module.symvers
 	KBUILD_OPTIONS += KBUILD_EXTRA_SYMBOLS+=$(PWD)/$(call intermediates-dir-for,DLKM,hw-fence-module-symvers)/Module.symvers
@@ -42,12 +40,14 @@ LOCAL_MODULE_TAGS         := optional
 LOCAL_MODULE_DEBUG_ENABLE := true
 LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
 
+ifeq (FACTORY, $(SEC_SAMSUNG_EXPERIENCE_PLATFORM_CATEGORY))
+        KBUILD_OPTIONS += KCPPFLAGS=-DFACTORY_MODE_DISABLE_ESD
+endif
+
 ifneq ($(TARGET_BOARD_AUTO),true)
-ifneq ($(TARGET_BOARD_PLATFORM), trinket)
 LOCAL_REQUIRED_MODULES    += mmrm-module-symvers
 LOCAL_ADDITIONAL_DEPENDENCIES += $(call intermediates-dir-for,DLKM,mmrm-module-symvers)/Module.symvers
-endif
-ifneq ($(TARGET_BOARD_PLATFORM), taro bengal monaco trinket)
+ifneq ($(TARGET_BOARD_PLATFORM), taro bengal monaco)
 	LOCAL_REQUIRED_MODULES    += msm-ext-disp-module-symvers
 	LOCAL_REQUIRED_MODULES    += sec-module-symvers
 	LOCAL_REQUIRED_MODULES    += hw-fence-module-symvers

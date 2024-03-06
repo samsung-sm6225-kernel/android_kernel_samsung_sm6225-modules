@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2011-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kernel.h>
@@ -104,10 +104,8 @@ static const struct of_device_id wcd9xxx_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, wcd9xxx_of_match);
 
-#ifndef CONFIG_WCD934X_I2S
 static int wcd9xxx_slim_device_up(struct slim_device *sldev);
 static int wcd9xxx_slim_device_down(struct slim_device *sldev);
-#endif
 
 struct wcd9xxx_i2c wcd9xxx_modules[MAX_WCD9XXX_DEVICE];
 
@@ -846,9 +844,7 @@ static int codec_debug_process_cdc_power(char *lbuf)
 	if (likely(!rc)) {
 		pdata = debugCodec->slim->dev.platform_data;
 		if (param == 0) {
-#ifndef CONFIG_WCD934X_I2S
 			wcd9xxx_slim_device_down(debugCodec->slim);
-#endif
 			msm_cdc_disable_static_supplies(debugCodec->dev,
 							debugCodec->supplies,
 							pdata->regulator,
@@ -864,9 +860,7 @@ static int codec_debug_process_cdc_power(char *lbuf)
 			usleep_range(1000, 2000);
 			wcd9xxx_set_reset_pin_state(debugCodec, pdata, true);
 			usleep_range(1000, 2000);
-#ifndef CONFIG_WCD934X_I2S
 			wcd9xxx_slim_device_up(debugCodec->slim);
-#endif
 		} else {
 			pr_err("%s: invalid command %ld\n", __func__, param);
 		}
@@ -1248,12 +1242,9 @@ static int wcd9xxx_i2c_probe(struct i2c_client *client,
 
 		ret = wcd9xxx_i2c_read(wcd9xxx, WCD9XXX_A_CHIP_STATUS, 1,
 				       &val, 0);
-		if (ret < 0) {
+		if (ret < 0)
 			pr_err("%s: failed to read the wcd9xxx status (%d)\n",
 			       __func__, ret);
-			ret = 0;
-		}
-
 		if (val != wcd9xxx->codec_type->i2c_chip_status)
 			pr_err("%s: unknown chip status 0x%x\n", __func__, val);
 
@@ -1596,7 +1587,6 @@ static int wcd9xxx_slim_remove(struct slim_device *pdev)
 }
 #endif
 
-#ifndef CONFIG_WCD934X_I2S
 static int wcd9xxx_device_up(struct wcd9xxx *wcd9xxx)
 {
 	int ret = 0;
@@ -1613,7 +1603,6 @@ static int wcd9xxx_device_up(struct wcd9xxx *wcd9xxx)
 	}
 	return ret;
 }
-#endif
 
 #ifndef CONFIG_WCD934X_I2S
 static int wcd9xxx_slim_device_reset(struct slim_device *sldev)
@@ -1640,7 +1629,7 @@ static int wcd9xxx_slim_device_reset(struct slim_device *sldev)
 	return ret;
 }
 #endif
-#ifndef CONFIG_WCD934X_I2S
+
 static int wcd9xxx_slim_device_up(struct slim_device *sldev)
 {
 	struct wcd9xxx *wcd9xxx = slim_get_devicedata(sldev);
@@ -1689,7 +1678,7 @@ static int wcd9xxx_slim_device_down(struct slim_device *sldev)
 
 	return 0;
 }
-#endif
+
 #ifndef CONFIG_WCD934X_I2S
 static int wcd9xxx_slim_resume(struct slim_device *sldev)
 {

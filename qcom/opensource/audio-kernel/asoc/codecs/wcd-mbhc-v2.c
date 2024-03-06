@@ -28,6 +28,13 @@
 #include "wcd-mbhc-adc.h"
 #include <asoc/wcd-mbhc-v2-api.h>
 
+//zhangsen1 earjack test start 
+struct class *audio_class;
+EXPORT_SYMBOL(audio_class);
+int earjack_state = 0;
+EXPORT_SYMBOL(earjack_state);
+//zhangsen1 earjack test end
+
 static const unsigned int mbhc_ext_dev_supported_table[] = {
 	EXTCON_JACK_MICROPHONE,
 	EXTCON_JACK_HEADPHONE,
@@ -576,7 +583,7 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 
 	WCD_MBHC_RSC_ASSERT_LOCKED(mbhc);
 
-	pr_debug("%s: enter insertion %d hph_status %x\n",
+	pr_info("%s: enter insertion %d hph_status %x\n",
 		 __func__, insertion, mbhc->hph_status);
 	if (!insertion) {
 		/* Report removal */
@@ -625,6 +632,10 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 #endif /* CONFIG_AUDIO_QGKI */
 		mbhc->current_plug = MBHC_PLUG_TYPE_NONE;
 		mbhc->force_linein = false;
+		if (mbhc->current_plug == MBHC_PLUG_TYPE_NONE) {
+			earjack_state = 0;
+			pr_info("[ZS]remove earjack_state value %d\n" ,earjack_state);
+		}
 	} else {
 		/*
 		 * Report removal of current jack type.
@@ -792,8 +803,23 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 				    (mbhc->hph_status | SND_JACK_MECHANICAL),
 				    WCD_MBHC_JACK_MASK);
 		wcd_mbhc_clr_and_turnon_hph_padac(mbhc);
+
+//zhangsen1 earjack state start 
+		if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADPHONE) {
+			earjack_state = 2;
+			pr_info("[ZS]earjack_state value %d\n" ,earjack_state);
+		} else if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADSET) {
+			earjack_state = 1;
+			pr_info("[ZS]earjack_state value %d\n" ,earjack_state);
+		} else {
+			earjack_state = 0;
+			pr_info("[ZS]earjack_state value %d\n" ,earjack_state);
+		}
+//zhangsen1 earjack state end
 	}
 	pr_debug("%s: leave hph_status %x\n", __func__, mbhc->hph_status);
+
+
 }
 EXPORT_SYMBOL(wcd_mbhc_report_plug);
 
@@ -878,8 +904,10 @@ void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 #if IS_ENABLED(CONFIG_AUDIO_QGKI)
 		wcd_mbhc_report_plug(mbhc, 1, SND_JACK_UNSUPPORTED);
 #endif /* CONFIG_AUDIO_QGKI */
-		 if (mbhc->current_plug == MBHC_PLUG_TYPE_NONE)
+		if (mbhc->current_plug == MBHC_PLUG_TYPE_NONE)
 			mbhc->current_plug = MBHC_PLUG_TYPE_GND_MIC_SWAP;
+
+		wcd_mbhc_report_plug(mbhc, 1, SND_JACK_HEADSET);
 		ret = extcon_set_state_sync(mbhc->extdev, EXTCON_MECHANICAL, 1);
 	} else if (plug_type == MBHC_PLUG_TYPE_HEADSET) {
 		if (mbhc->mbhc_cfg->enable_anc_mic_detect &&
@@ -1161,6 +1189,8 @@ int wcd_mbhc_get_button_mask(struct wcd_mbhc *mbhc)
 	int btn;
 
 	btn = mbhc->mbhc_cb->map_btn_code_to_num(mbhc->component);
+	pr_info("%s: btn value %d \n", __func__, btn);
+	pr_debug("%s: btn value %d \n", __func__, btn);
 
 	switch (btn) {
 	case 0:
@@ -1804,6 +1834,29 @@ void wcd_mbhc_stop(struct wcd_mbhc *mbhc)
 }
 EXPORT_SYMBOL(wcd_mbhc_stop);
 
+//zhangsen earjack status start 
+ssize_t headset_state_A05Score_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	int type = 0;
+
+	type = earjack_state;
+	pr_info("[ZS] headset_state_A05Score_show earjack_state value %d\n" ,earjack_state);
+
+	return sprintf(buf, "%d\n", type);
+}
+
+ssize_t headset_state_A05Score_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t len)
+{
+	return len;
+}
+//zhangsen earjack status end 
+
+//zhangsen1 earjack test start
+static struct device_attribute classic_earjack_state_attrs[] = {
+	__ATTR(state, 0644, headset_state_A05Score_show, headset_state_A05Score_store),
+};
+//zhangsen1 earjack test end
+
 /*
  * wcd_mbhc_init : initialize MBHC internal structures.
  *
@@ -1824,7 +1877,7 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_component *component,
 	const char *gnd_switch = "qcom,msm-mbhc-gnd-swh";
 	const char *hs_thre = "qcom,msm-mbhc-hs-mic-max-threshold-mv";
 	const char *hph_thre = "qcom,msm-mbhc-hs-mic-min-threshold-mv";
-
+	struct device *earjack = NULL;
 	pr_debug("%s: enter\n", __func__);
 
 	ret = of_property_read_u32(card->dev->of_node, hph_switch, &hph_swh);
@@ -1867,6 +1920,16 @@ int wcd_mbhc_init(struct wcd_mbhc *mbhc, struct snd_soc_component *component,
 		mbhc->moist_iref = hph_moist_config[1];
 		mbhc->moist_rref = hph_moist_config[2];
 	}
+
+//zhangsen1 earjack state create start
+	audio_class = class_create(THIS_MODULE, "audio");
+	if (IS_ERR(audio_class)) {
+		return PTR_ERR(audio_class);
+	}
+	pr_info("[ZS]wcd_mbhc_init start \n");
+//zhangsen1 earjack state create end
+	earjack = device_create(audio_class, NULL, MKDEV(0, 0), NULL, "%s", "earjack");
+	device_create_file(earjack, &classic_earjack_state_attrs[0]);
 
 	mbhc->in_swch_irq_handler = false;
 	mbhc->current_plug = MBHC_PLUG_TYPE_NONE;

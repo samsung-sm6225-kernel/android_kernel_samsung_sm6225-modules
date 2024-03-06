@@ -28,7 +28,7 @@ static int cam_eeprom_read_memory(struct cam_eeprom_ctrl_t *e_ctrl,
 	struct cam_eeprom_memory_block_t *block)
 {
 	int                                rc = 0;
-	int                                j;
+	int                                j, index;
 	struct cam_sensor_i2c_reg_setting  i2c_reg_settings = {0};
 	struct cam_sensor_i2c_reg_array    i2c_reg_array = {0};
 	struct cam_eeprom_memory_map_t    *emap = block->map;
@@ -104,17 +104,33 @@ static int cam_eeprom_read_memory(struct cam_eeprom_ctrl_t *e_ctrl,
 		}
 
 		if (emap[j].mem.valid_size) {
-			rc = camera_io_dev_read_seq(&e_ctrl->io_master_info,
-				emap[j].mem.addr, memptr,
-				emap[j].mem.addr_type,
-				emap[j].mem.data_type,
-				emap[j].mem.valid_size);
-			if (rc < 0) {
-				CAM_ERR(CAM_EEPROM, "read failed rc %d",
-					rc);
-				return rc;
+			/*Add  hi1336 otp need to read a fixed addr 0308 many times, use i2c write addr to distinguish*/
+			if(eb_info->i2c_info.slave_addr == 0x40) {
+				CAM_DBG(CAM_EEPROM, "hi1336 otp valid_size is %d", emap[j].mem.valid_size);
+				for(index = 0; index <emap[j].mem.valid_size; index++, memptr++) {
+					rc = camera_io_dev_read_seq(&e_ctrl->io_master_info,
+						emap[j].mem.addr, memptr,
+						emap[j].mem.addr_type,
+						emap[j].mem.data_type, 1);
+					if (rc < 0) {
+						CAM_ERR(CAM_EEPROM, "read failed rc %d",
+							rc);
+						return rc;
+					}
+				}
+			} else {
+				rc = camera_io_dev_read_seq(&e_ctrl->io_master_info,
+					emap[j].mem.addr, memptr,
+					emap[j].mem.addr_type,
+					emap[j].mem.data_type,
+					emap[j].mem.valid_size);
+				if (rc < 0) {
+					CAM_ERR(CAM_EEPROM, "read failed rc %d",
+						rc);
+					return rc;
+				}
+				memptr += emap[j].mem.valid_size;
 			}
-			memptr += emap[j].mem.valid_size;
 		}
 
 		if (emap[j].pageen.valid_size) {

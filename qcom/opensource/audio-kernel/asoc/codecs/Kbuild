@@ -26,10 +26,12 @@ endif
 ifeq ($(CONFIG_SND_SOC_AUTO), y)
 	ifdef CONFIG_SND_SOC_SA8155
 		include $(AUDIO_ROOT)/config/sa8155auto.conf
+		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/sa8155autoconf.h
 	endif
 	ifdef CONFIG_SND_SOC_SA6155
 		include $(AUDIO_ROOT)/config/sa6155auto.conf
+		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/sa6155autoconf.h
 	endif
 	ifdef CONFIG_SND_SOC_GVM
@@ -58,9 +60,11 @@ ifeq ($(KERNEL_BUILD), 0)
 	ifeq ($(CONFIG_ARCH_SM6150), y)
 		ifdef CONFIG_SND_SOC_SA6155
 			include $(AUDIO_ROOT)/config/sa6155auto.conf
+			export
 			INCS    +=  -include $(AUDIO_ROOT)/config/sa6155autoconf.h
 		else
 			include $(AUDIO_ROOT)/config/sm6150auto.conf
+			export
 			INCS    +=  -include $(AUDIO_ROOT)/config/sm6150autoconf.h
 		endif
 	endif
@@ -107,6 +111,7 @@ ifeq ($(KERNEL_BUILD), 0)
 	endif
 	ifeq ($(CONFIG_QTI_QUIN_GVM), y)
 		include $(AUDIO_ROOT)/config/gvmauto.conf
+		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/gvmautoconf.h
 	endif
 	ifeq ($(CONFIG_ARCH_SDXLEMUR), y)

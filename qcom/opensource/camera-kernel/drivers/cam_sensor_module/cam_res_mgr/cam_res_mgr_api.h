@@ -100,6 +100,8 @@ int cam_res_mgr_shared_pinctrl_post_init(void);
 int cam_res_mgr_gpio_request(struct device *dev, unsigned int gpio,
 		unsigned long flags, const char *label);
 
+void cam_res_mgr_gpio_free(struct device *dev, uint gpio);
+
 /**
  * @brief: Free a array GPIO
  *

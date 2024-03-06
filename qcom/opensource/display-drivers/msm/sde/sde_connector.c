@@ -2752,7 +2752,7 @@ static void _sde_connector_report_panel_dead(struct sde_connector *conn,
 	event.length = sizeof(bool);
 	msm_mode_object_event_notify(&conn->base.base,
 		conn->base.dev, &event, (u8 *)&conn->panel_dead);
-	SDE_ERROR("esd check failed report PANEL_DEAD conn_id: %d enc_id: %d\n",
+	SDE_ERROR("[ESD] esd check failed report PANEL_DEAD conn_id: %d enc_id: %d\n",
 			conn->base.base.id, conn->encoder->base.id);
 }
 
@@ -2848,7 +2848,7 @@ static void sde_connector_check_status_work(struct work_struct *work)
 	if (rc > 0) {
 		u32 interval;
 
-		SDE_DEBUG("esd check status success conn_id: %d enc_id: %d\n",
+		SDE_ERROR("[ESD] esd check status success conn_id: %d enc_id: %d\n",
 				conn->base.base.id, conn->encoder->base.id);
 
 		/* If debugfs property is not set then take default value */
@@ -3289,12 +3289,35 @@ static ssize_t twm_enable_show(struct device *device,
 	return scnprintf(buf, PAGE_SIZE, "%d\n", sde_conn->twm_en);
 }
 
+/* add esd_enable node for powersaving debug*/
+static ssize_t esd_enable_store(struct device *device,
+        struct device_attribute *attr, const char *buf, size_t count)
+{
+        struct drm_connector *conn;
+        int rc = 0, data = 0;
+        bool enable = false;
+
+        conn = dev_get_drvdata(device);
+        rc = kstrtoint(buf, 10, &data);
+        if (rc) {
+                SDE_ERROR("kstrtoint failed, rc = %d\n", rc);
+                return -EINVAL;
+        }
+        enable = data ? true : false;
+        sde_connector_schedule_status_work(conn, enable);
+        SDE_ERROR("ESD: %s\n", enable ? "ENABLED" : "DISABLED");
+
+        return count;
+}
+
 static DEVICE_ATTR_RO(panel_power_state);
 static DEVICE_ATTR_RW(twm_enable);
+static DEVICE_ATTR_WO(esd_enable);
 
 static struct attribute *sde_connector_dev_attrs[] = {
 	&dev_attr_panel_power_state.attr,
 	&dev_attr_twm_enable.attr,
+	&dev_attr_esd_enable.attr,
 	NULL
 };
 

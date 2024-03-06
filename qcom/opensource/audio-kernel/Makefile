@@ -1,4 +1,4 @@
-ifeq ($(TARGET_SUPPORT), lemans)
+ifeq ($(TARGET_SUPPORT), $(filter $(TARGET_SUPPORT), lemans))
 KBUILD_OPTIONS := CONFIG_SND_SOC_AUTO=y
 KBUILD_OPTIONS += CONFIG_SND_SOC_SA8255=m
 endif
@@ -62,7 +62,7 @@ AUDIO_ROOT=$(KERNEL_SRC)/$(M)
 
 KBUILD_OPTIONS+=  AUDIO_ROOT=$(AUDIO_ROOT)
 
-all: modules
+all: clean modules
 
 clean:
 	$(MAKE) -C $(KERNEL_SRC) M=$(M) clean

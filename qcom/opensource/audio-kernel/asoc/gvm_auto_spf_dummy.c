@@ -67,6 +67,7 @@
 #define ADSP_STATE_READY_TIMEOUT_MS 3000
 #define MSM_LL_QOS_VALUE 300 /* time in us to ensure LPM doesn't go in C3/C4 */
 #define MSM_HIFI_ON 1
+#define BUF_SZ 32
 #define DIR_SZ 10
 
 struct snd_card_pdata {
@@ -76,7 +77,7 @@ struct snd_card_pdata {
 
 static struct attribute card_state_attr = {
 	.name = "card_state",
-	.mode = 0666,
+	.mode = 0660,
 };
 
 enum {
@@ -719,15 +720,14 @@ int snd_card_set_card_status(snd_card_status_t card_status)
 static ssize_t snd_card_sysfs_show(struct kobject *kobj,
 		struct attribute *attr, char *buf)
 {
-	/* Max length of buf is PAGE_SIZE */
-	return sysfs_emit(buf, "%d", snd_card_pdata->card_status);
+	return snprintf(buf, BUF_SZ, "%d", snd_card_pdata->card_status);
 }
 
 static ssize_t snd_card_sysfs_store(struct kobject *kobj,
 		struct attribute *attr, const char *buf, size_t count)
 {
 	sscanf(buf, "%d", &snd_card_pdata->card_status);
-	sysfs_notify(kobj, NULL, "card_state");
+	sysfs_notify(&snd_card_pdata->snd_card_kobj, NULL, "card_state");
 	return 0;
 }
 
@@ -736,13 +736,7 @@ static const struct sysfs_ops snd_card_sysfs_ops = {
 	.store = snd_card_sysfs_store,
 };
 
-static void snd_card_sysfs_release(struct kobject *kobj)
-{
-	kfree(snd_card_pdata); /* Free the memory */
-}
-
 static struct kobj_type snd_card_ktype = {
-	.release = snd_card_sysfs_release,
 	.sysfs_ops = &snd_card_sysfs_ops,
 };
 
@@ -752,30 +746,26 @@ int snd_card_sysfs_init(void)
 	char dir[DIR_SZ] = "snd_card";
 
 	snd_card_pdata = kcalloc(1, sizeof(struct snd_card_pdata), GFP_KERNEL);
-	if (!snd_card_pdata)
-		return -ENOMEM;
-
-	/* kernel_kobj is the kobject of /sys/kernel/ */
 	ret = kobject_init_and_add(&snd_card_pdata->snd_card_kobj, &snd_card_ktype,
 		kernel_kobj, dir);
-
 	if (ret < 0) {
-		pr_err("%s: Failed to init and add kobject %s, err = %d\n",
+		pr_err("%s: Failed to add kobject %s, err = %d\n",
 			__func__, dir, ret);
-		goto fail;
+		goto done;
 	}
 
 	ret = sysfs_create_file(&snd_card_pdata->snd_card_kobj, &card_state_attr);
 	if (ret < 0) {
 		pr_err("%s: Failed to add snd_card sysfs entry to %s\n",
 			__func__, dir);
-		goto fail;
+		goto fail_create_file;
 	}
 
 	return ret;
 
-fail:
+fail_create_file:
 	kobject_put(&snd_card_pdata->snd_card_kobj);
+done:
 	return ret;
 }
 
@@ -1061,11 +1051,6 @@ err:
 
 static int msm_asoc_machine_remove(struct platform_device *pdev)
 {
-	/* kobject_put decrease the kref count, once the cound reaches 0.
-	 * Kobject core will automatically clean up the memory allocated by kobject.
-	 * The snd_card_sysfs_release release will help clean up memory allocated by us */
-	kobject_put(&snd_card_pdata->snd_card_kobj);
-
 	misc_deregister(&virt_sndcard_ctl_misc);
 	return 0;
 }

@@ -25,6 +25,8 @@
 #include <linux/moduleparam.h>
 #include <linux/ip.h>
 #include <linux/ipv6.h>
+#include <linux/ipc_logging.h>
+#include <linux/rtc.h>
 
 #define NLMSG_FLOW_ACTIVATE 1
 #define NLMSG_FLOW_DEACTIVATE 2
@@ -208,6 +210,8 @@ static void qmi_rmnet_update_flow_map(struct rmnet_flow_map *itm,
 int qmi_rmnet_flow_control(struct net_device *dev, u32 mq_idx, int enable)
 {
 	struct netdev_queue *q;
+	struct timespec64 ts64;
+	struct rtc_time tm;
 
 	if (unlikely(mq_idx >= dev->num_tx_queues))
 		return 0;
@@ -215,6 +219,13 @@ int qmi_rmnet_flow_control(struct net_device *dev, u32 mq_idx, int enable)
 	q = netdev_get_tx_queue(dev, mq_idx);
 	if (unlikely(!q))
 		return 0;
+
+	ktime_get_real_ts64(&ts64);
+	rtc_time64_to_tm(ts64.tv_sec - (sys_tz.tz_minuteswest * 60), &tm);
+	net_log("%d-%02d-%02d %02d:%02d:%02d.%06lu, %s[%d] %s_queue\n", 
+				tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+				tm.tm_hour, tm.tm_min, tm.tm_sec, ts64.tv_nsec/1000,
+				dev->name, mq_idx, enable ? "wake" : "stop");
 
 	if (enable)
 		netif_tx_wake_queue(q);
@@ -335,6 +346,9 @@ static struct rmnet_bearer_map *__qmi_rmnet_bearer_get(
 		timer_setup(&bearer->ch_switch.guard_timer,
 			    rmnet_ll_guard_fn, 0);
 		list_add(&bearer->list, &qos_info->bearer_head);
+
+		net_log("create bearer: %s m=%d b=%u",
+			qos_info->vnd_dev, qos_info->mux_id, bearer->bearer_id);
 	}
 
 	return bearer;
@@ -369,6 +383,14 @@ static void __qmi_rmnet_bearer_put(struct net_device *dev,
 		/* Remove from bearer map */
 		list_del(&bearer->list);
 		qos_info->removed_bearer = bearer;
+
+		net_log("remove bearer: %s m=%d b=%u gr=%u q=%d",
+			dev->name, qos_info->mux_id, bearer->bearer_id,
+			bearer->grant_size, bearer->mq_idx);
+	} else if (bearer && bearer->flow_ref >= 0) {
+		/* bearer is still being used by other mq */
+		net_log("can't remove bearer_map m=%d b=%u ref:%d q=%d",
+			qos_info->mux_id, bearer->bearer_id, bearer->flow_ref, bearer->mq_idx);
 	}
 }
 
@@ -385,6 +407,11 @@ static void __qmi_rmnet_update_mq(struct net_device *dev,
 
 	mq = &qos_info->mq[itm->mq_idx];
 	if (!mq->bearer) {
+		/* TODO: seems to be assigned multiple times */
+		if (bearer->mq_idx != INVALID_MQ && bearer->mq_idx != itm->mq_idx)
+			net_log("WARN: multiple assign! %s m=%d b=%u f=%u ip=%d prev_q=%d next_q=%d",
+				dev->name, qos_info->mux_id, itm->bearer_id, itm->flow_id, itm->ip_type,
+				bearer->mq_idx, itm->mq_idx);
 		mq->bearer = bearer;
 		mq->is_ll_ch = bearer->ch_switch.current_ch;
 		mq->drop_on_remove = false;
@@ -403,9 +430,21 @@ static void __qmi_rmnet_update_mq(struct net_device *dev,
 			bearer->grant_thresh =
 				qmi_rmnet_grant_per(DEFAULT_GRANT);
 		}
+		net_log("update_mq %s m=%d b=%u gr=%u f=%u q=%d en",
+			dev->name, qos_info->mux_id, itm->bearer_id,
+			bearer->grant_size, itm->flow_id, itm->mq_idx);
 		qmi_rmnet_flow_control(dev, itm->mq_idx, 1);
-		if (dfc_mode == DFC_MODE_SA)
+		if (dfc_mode == DFC_MODE_SA) {
+			net_log("update_mq %s m=%d b=%u gr=%u f=%u q=%d en",
+				dev->name, qos_info->mux_id, itm->bearer_id,
+				bearer->grant_size, itm->flow_id, bearer->ack_mq_idx);
 			qmi_rmnet_flow_control(dev, bearer->ack_mq_idx, 1);
+		}
+	} else {
+		net_log("WARN: skip update_mp! %s m=%d current(b=%u q=%d) new(b=%u f=%u ip=%d q=%d)",
+			dev->name, qos_info->mux_id,
+			mq->bearer->bearer_id, mq->bearer->mq_idx,
+			itm->bearer_id, itm->flow_id, itm->ip_type, itm->mq_idx);
 	}
 }
 
@@ -455,7 +494,10 @@ static int qmi_rmnet_add_flow(struct net_device *dev, struct tcmsg *tcm,
 	new_map.mq_idx = tcm->tcm_handle;
 	trace_dfc_flow_info(dev->name, new_map.bearer_id, new_map.flow_id,
 			    new_map.ip_type, new_map.mq_idx, 1);
-
+	net_log("add flow: %s m=%d b=%d f=%d ip=%d q=%d\n",
+			dev->name, qos_info->mux_id, new_map.bearer_id,
+			new_map.flow_id,
+			new_map.ip_type, new_map.mq_idx);
 again:
 	spin_lock_bh(&qos_info->qos_lock);
 
@@ -488,6 +530,10 @@ again:
 
 	qmi_rmnet_update_flow_map(itm, &new_map);
 	list_add(&itm->list, &qos_info->flow_head);
+
+	net_log("create flow: %s m=%d b=%d f=%d ip=%d q=%d\n",
+		dev->name, qos_info->mux_id, itm->bearer_id,
+		itm->flow_id, itm->ip_type, itm->mq_idx);
 
 	/* Create or update bearer map */
 	bearer = __qmi_rmnet_bearer_get(qos_info, new_map.bearer_id);
@@ -536,7 +582,10 @@ qmi_rmnet_del_flow(struct net_device *dev, struct tcmsg *tcm,
 		trace_dfc_flow_info(dev->name, new_map.bearer_id,
 				    new_map.flow_id, new_map.ip_type,
 				    itm->mq_idx, 0);
-
+		net_log("delete flow: %s m=%d b=%d f=%d ip=%d q=%d\n",
+			dev->name, qos_info->mux_id, new_map.bearer_id,
+			new_map.flow_id,
+			new_map.ip_type, itm->mq_idx);
 		__qmi_rmnet_bearer_put(dev, qos_info, itm->bearer, true);
 
 		/* Remove from flow map */
@@ -544,8 +593,11 @@ qmi_rmnet_del_flow(struct net_device *dev, struct tcmsg *tcm,
 		kfree(itm);
 	}
 
-	if (list_empty(&qos_info->flow_head))
+	if (list_empty(&qos_info->flow_head)) {
 		netif_tx_wake_all_queues(dev);
+		net_log("wake: %s m=%d b=%u gr=%u f=%u q=%d en",
+			dev->name, qos_info->mux_id, 0xff, DEFAULT_GRANT, 0, 0);
+	}
 
 	spin_unlock_bh(&qos_info->qos_lock);
 
@@ -646,6 +698,9 @@ qmi_rmnet_setup_client(void *port, struct qmi_info *qmi, struct tcmsg *tcm)
 		err = wda_qmi_client_init(port, &svc, qmi);
 	}
 
+	net_log("%s: mode %d idx %d svc [%d:%d:%d], err=%d\n", __func__,
+				dfc_mode, idx, svc.instance, svc.ep_type, svc.iface_id, err);
+
 	return err;
 }
 
@@ -653,6 +708,8 @@ static int
 __qmi_rmnet_delete_client(void *port, struct qmi_info *qmi, int idx)
 {
 	void *data = NULL;
+
+	net_log("%s: idx %d\n", __func__, idx);
 
 	ASSERT_RTNL();
 

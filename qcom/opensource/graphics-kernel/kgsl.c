@@ -23,10 +23,10 @@
 #include <linux/qcom_dma_heap.h>
 #include <linux/security.h>
 #include <linux/sort.h>
-#include <linux/string_helpers.h>
 #include <soc/qcom/of_common.h>
 #include <soc/qcom/secure_buffer.h>
 #include <soc/qcom/boot_stats.h>
+#include <trace/hooks/mm.h>
 
 #include "kgsl_compat.h"
 #include "kgsl_debugfs.h"
@@ -940,7 +940,6 @@ static void kgsl_destroy_process_private(struct kref *kref)
 	write_unlock(&kgsl_driver.proclist_lock);
 	mutex_unlock(&kgsl_driver.process_mutex);
 
-	kfree(private->cmdline);
 	put_pid(private->pid);
 	idr_destroy(&private->mem_idr);
 	idr_destroy(&private->syncsource_idr);
@@ -1159,7 +1158,6 @@ static struct kgsl_process_private *kgsl_process_private_new(
 	private->fd_count = 1;
 	private->pid = cur_pid;
 	get_task_comm(private->comm, current->group_leader);
-	private->cmdline = kstrdup_quotable_cmdline(current, GFP_KERNEL);
 
 	spin_lock_init(&private->mem_lock);
 	spin_lock_init(&private->syncsource_lock);
@@ -4969,6 +4967,20 @@ int kgsl_of_property_read_ddrtype(struct device_node *node, const char *base,
 	return of_property_read_u32(node, base, ptr);
 }
 
+static void kgsl_show_mem(void *data, unsigned int filter, nodemask_t *nodemask)
+{
+	long total_kbytes = atomic_long_read(&kgsl_driver.stats.page_alloc) >> 10;
+
+	pr_info("%s: %ld kB\n", "KgslSharedmem", total_kbytes);
+}
+
+static void kgsl_meminfo(void *data, struct seq_file *m)
+{
+	long total_kbytes = atomic_long_read(&kgsl_driver.stats.page_alloc) >> 10;
+
+	show_val_meminfo(m, "KgslSharedmem", total_kbytes);
+}
+
 int kgsl_device_platform_probe(struct kgsl_device *device)
 {
 	struct platform_device *pdev = device->pdev;
@@ -5009,6 +5021,9 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	/* Set up the GPU events for the device */
 	kgsl_device_events_probe(device);
 
+	register_trace_android_vh_show_mem(kgsl_show_mem, NULL);
+	register_trace_android_vh_meminfo_proc_show(kgsl_meminfo, NULL);
+
 	/* Initialize common sysfs entries */
 	kgsl_pwrctrl_init_sysfs(device);
 
@@ -5033,6 +5048,8 @@ error:
 void kgsl_device_platform_remove(struct kgsl_device *device)
 {
 	del_timer(&device->work_period_timer);
+	unregister_trace_android_vh_show_mem(kgsl_show_mem, NULL);
+	unregister_trace_android_vh_meminfo_proc_show(kgsl_meminfo, NULL);
 
 	if (device->events_wq) {
 		destroy_workqueue(device->events_wq);

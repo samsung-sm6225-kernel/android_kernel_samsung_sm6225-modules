@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2020-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <media/v4l2_vidc_extensions.h>
@@ -84,10 +84,6 @@ struct msm_vdec_prop_type_handle {
 static int msm_vdec_codec_change(struct msm_vidc_inst *inst, u32 v4l2_codec)
 {
 	int rc = 0;
-	bool create_inst_handler = false;
-
-	if (!inst->codec)
-		create_inst_handler = true;
 
 	if (inst->codec && inst->fmts[INPUT_PORT].fmt.pix_mp.pixelformat == v4l2_codec)
 		return 0;
@@ -106,15 +102,13 @@ static int msm_vdec_codec_change(struct msm_vidc_inst *inst, u32 v4l2_codec)
 	if (rc)
 		goto exit;
 
-	if (create_inst_handler) {
-		rc = msm_vidc_ctrl_handler_init(inst, true);
-		if(rc)
-			goto exit;
-	} else {
-		rc = msm_vidc_ctrl_handler_update(inst);
-		if(rc)
-			goto exit;
-	}
+	rc = msm_vidc_ctrl_deinit(inst);
+	if (rc)
+		goto exit;
+
+	rc = msm_vidc_ctrl_init(inst);
+	if(rc)
+		goto exit;
 
 	rc = msm_vidc_update_buffer_count(inst, INPUT_PORT);
 	if (rc)
@@ -1214,8 +1208,6 @@ static int msm_vdec_session_resume(struct msm_vidc_inst *inst,
 {
 	int rc = 0;
 
-	msm_vidc_scale_power(inst, true);
-
 	i_vpr_h(inst, "%s()\n", __func__);
 	rc = venus_hfi_session_command(inst,
 			HFI_CMD_RESUME,
@@ -2253,8 +2245,6 @@ int msm_vdec_process_cmd(struct msm_vidc_inst *inst, u32 cmd)
 			return 0;
 		else if (allow != MSM_VIDC_ALLOW)
 			return -EINVAL;
-
-		msm_vidc_scale_power(inst, true);
 		rc = venus_hfi_session_command(inst,
 				HFI_CMD_DRAIN,
 				INPUT_PORT,
@@ -2955,7 +2945,7 @@ int msm_vdec_inst_deinit(struct msm_vidc_inst *inst)
 	}
 	/* cancel pending batch work */
 	cancel_batch_work(inst);
-	rc = msm_vidc_ctrl_handler_deinit(inst);
+	rc = msm_vidc_ctrl_deinit(inst);
 	if (rc)
 		return rc;
 

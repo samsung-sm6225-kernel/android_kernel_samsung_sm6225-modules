@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2018, The Linux Foundation. All rights reserved.
- * Copyright (c) 2023 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/regmap.h>
@@ -1936,7 +1935,6 @@ static bool wcd934x_is_volatile_register(struct device *dev, unsigned int reg)
 }
 
 struct regmap_config wcd934x_regmap_config = {
-	.name = "wcd934x",
 	.reg_bits = 16,
 	.val_bits = 8,
 	.cache_type = REGCACHE_RBTREE,

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/kthread.h>
@@ -359,9 +359,6 @@ kgsl_reclaim_shrink_count_objects(struct shrinker *shrinker,
 	struct kgsl_process_private *process;
 	unsigned long count_reclaimable = 0;
 
-	if (!current_is_kswapd())
-		return 0;
-
 	read_lock(&kgsl_driver.proclist_lock);
 	list_for_each_entry(process, &kgsl_driver.process_list, list) {
 		if (!test_bit(KGSL_PROC_STATE, &process->state))
@@ -370,7 +367,7 @@ kgsl_reclaim_shrink_count_objects(struct shrinker *shrinker,
 	}
 	read_unlock(&kgsl_driver.proclist_lock);
 
-	return count_reclaimable;
+	return (count_reclaimable << PAGE_SHIFT);
 }
 
 /* Shrinker callback data*/

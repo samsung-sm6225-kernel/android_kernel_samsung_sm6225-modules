@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016-2017, 2020-2021 The Linux Foundation. All rights reserved.
- * Copyright (c) 2022-2023, Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  */
 
 #include <linux/init.h>
@@ -72,7 +72,7 @@ static int audio_notifier_ssr_adsp_cb(struct notifier_block *this,
 static int audio_notifier_ssr_modem_cb(struct notifier_block *this,
 				     unsigned long opcode, void *data);
 static void audio_notifier_pdr_adsp_cb(int status, char *service_name, void *priv);
-static void audio_notifier_pdr_mdsp_root_cb(int status, char *service_name, void *priv);
+
 static int audio_notifier_ssr_cc_cb(struct notifier_block *this,
 				     unsigned long opcode, void *data);
 
@@ -128,17 +128,6 @@ static struct service_info service_data[AUDIO_NOTIFIER_MAX_SERVICES]
 		.name = "INVALID",
 		.state = NO_SERVICE,
 		.hook.cb = NULL
-	},
-	{	/* PDR CCDSP service not enabled */
-		.name = "INVALID",
-		.state = NO_SERVICE,
-		.hook.cb = NULL
-	},
-	{
-		.name = "PDR_MODEM_ROOT",
-		.domain_id = AUDIO_PDR_DOMAIN_MODEM_ROOT,
-		.state = UNINIT_SERVICE,
-		.hook.cb = &audio_notifier_pdr_mdsp_root_cb
 	} }
 };
 
@@ -160,9 +149,6 @@ static int audio_notifier_get_default_service(int domain)
 		break;
 	case AUDIO_NOTIFIER_CC_DOMAIN:
 		service = AUDIO_NOTIFIER_SSR_SERVICE;
-		break;
-	case AUDIO_NOTIFIER_MODEM_ROOT_DOMAIN:
-		service = AUDIO_NOTIFIER_PDR_SERVICE;
 		break;
 	}
 
@@ -205,11 +191,21 @@ static int audio_notifier_reg_service(int service, int domain)
 	void *handle;
 	int ret = 0;
 	int curr_state = AUDIO_NOTIFIER_SERVICE_DOWN;
+	struct platform_device *pdev = adsp_private;
+	struct adsp_notify_private *priv = NULL;
+	struct rproc *rproc;
+
+	priv = platform_get_drvdata(pdev);
+	if (!priv) {
+		dev_err_ratelimited(&pdev->dev, " %s: Private data get failed\n", __func__);
+		return ret;;
+	}
+
+	rproc = priv->rproc_h;
 
 	switch (service) {
 	case AUDIO_NOTIFIER_SSR_SERVICE:
-		handle = audio_ssr_register(
-			service_data[service][domain].domain_id,
+		handle = audio_ssr_register(rproc->name,
 			service_data[service][domain].hook.nb);
 		break;
 	case AUDIO_NOTIFIER_PDR_SERVICE:
@@ -509,11 +505,6 @@ done:
 static void audio_notifier_pdr_adsp_cb(int status, char *service_name, void *priv)
 {
 	audio_notifier_service_cb(status, AUDIO_NOTIFIER_PDR_SERVICE, AUDIO_NOTIFIER_ADSP_DOMAIN);
-}
-
-static void audio_notifier_pdr_mdsp_root_cb(int status, char *service_name, void *priv)
-{
-	audio_notifier_service_cb(status, AUDIO_NOTIFIER_PDR_SERVICE, AUDIO_NOTIFIER_MODEM_ROOT_DOMAIN);
 }
 
 static int audio_notifier_ssr_adsp_cb(struct notifier_block *this,

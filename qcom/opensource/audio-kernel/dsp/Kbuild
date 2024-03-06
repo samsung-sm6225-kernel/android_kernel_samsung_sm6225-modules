@@ -26,18 +26,22 @@ endif
 ifeq ($(CONFIG_SND_SOC_AUTO), y)
 	ifdef CONFIG_SND_SOC_SA8155
 		include $(AUDIO_ROOT)/config/sa8155auto.conf
+		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/sa8155autoconf.h
 	endif
 	ifdef CONFIG_SND_SOC_SA6155
 		include $(AUDIO_ROOT)/config/sa6155auto.conf
+		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/sa6155autoconf.h
 	endif
 	ifdef CONFIG_SND_SOC_GVM
 		include $(AUDIO_ROOT)/config/gvmauto.conf
+		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/gvmautoconf.h
 	endif
 	ifdef CONFIG_SND_SOC_SA8255
 		include $(AUDIO_ROOT)/config/sa8255auto.conf
+		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/sa8255autoconf.h
 	endif
 else
@@ -45,9 +49,11 @@ ifeq ($(KERNEL_BUILD), 0)
 	ifeq ($(CONFIG_ARCH_SM6150), y)
 		ifdef CONFIG_SND_SOC_SA6155
 			include $(AUDIO_ROOT)/config/sa6155auto.conf
+			export
 			INCS    +=  -include $(AUDIO_ROOT)/config/sa6155autoconf.h
 		else
 			include $(AUDIO_ROOT)/config/sm6150auto.conf
+			export
 			INCS    +=  -include $(AUDIO_ROOT)/config/sm6150autoconf.h
 		endif
 	endif
@@ -85,18 +91,22 @@ ifeq ($(KERNEL_BUILD), 0)
 	ifeq ($(CONFIG_ARCH_SM8150), y)
 		ifdef CONFIG_SND_SOC_SA8155
 			include $(AUDIO_ROOT)/config/sa8155auto.conf
+			export
 			INCS    +=  -include $(AUDIO_ROOT)/config/sa8155autoconf.h
 		else
 			include $(AUDIO_ROOT)/config/sm8150auto.conf
+			export
 			INCS    +=  -include $(AUDIO_ROOT)/config/sm8150autoconf.h
 		endif
 	endif
 	ifeq ($(CONFIG_ARCH_SDMSHRIKE), y)
 		ifdef CONFIG_SND_SOC_SA8155
 			include $(AUDIO_ROOT)/config/sa8155auto.conf
+			export
 			INCS    +=  -include $(AUDIO_ROOT)/config/sa8155autoconf.h
 		else
 			include $(AUDIO_ROOT)/config/sm8150auto.conf
+			export
 			INCS    +=  -include $(AUDIO_ROOT)/config/sm8150autoconf.h
 		endif
 	endif
@@ -107,6 +117,7 @@ ifeq ($(KERNEL_BUILD), 0)
 	endif
 	ifeq ($(CONFIG_QTI_QUIN_GVM), y)
 		include $(AUDIO_ROOT)/config/gvmauto.conf
+		export
 		INCS    +=  -include $(AUDIO_ROOT)/config/gvmautoconf.h
 	endif
 	ifeq ($(CONFIG_ARCH_SDXLEMUR), y)
@@ -174,10 +185,6 @@ endif
 
 ifdef CONFIG_MSM_ADSP_LOADER
 ADSP_LOADER_OBJS += adsp-loader.o
-endif
-
-ifdef CONFIG_MSM_COUPLED_SSR
-COUPLED_SSR_OBJS += audio_coupled_ssr.o
 endif
 
 ifdef CONFIG_MSM_QDSP6_PDR
@@ -262,9 +269,6 @@ q6_dlkm-y := $(Q6_OBJS)
 
 obj-$(CONFIG_MSM_ADSP_LOADER) += adsp_loader_dlkm.o
 adsp_loader_dlkm-y := $(ADSP_LOADER_OBJS)
-
-obj-$(CONFIG_MSM_COUPLED_SSR) += coupled_ssr_dlkm.o
-coupled_ssr_dlkm-y := $(COUPLED_SSR_OBJS)
 
 obj-$(CONFIG_MSM_QDSP6_PDR) += q6_pdr_dlkm.o
 q6_pdr_dlkm-y := $(QDSP6_PDR_OBJS)

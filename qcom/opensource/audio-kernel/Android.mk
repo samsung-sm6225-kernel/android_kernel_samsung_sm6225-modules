@@ -27,7 +27,7 @@ BOARD_OPENSOURCE_DIR ?= vendor/qcom/opensource
 BOARD_COMMON_DIR ?= device/qcom/common
 
 # Build/Package only in case of supported target
-ifeq ($(call is-board-platform-in-list,taro kalama bengal monaco msmnile gen4), true)
+ifeq ($(call is-board-platform-in-list,taro kalama bengal monaco msmnile), true)
 
 # This makefile is only for DLKM
 ifneq ($(findstring vendor,$(LOCAL_PATH)),)
@@ -50,16 +50,12 @@ KBUILD_OPTIONS := AUDIO_ROOT=$(AUDIO_BLD_DIR)
 KBUILD_OPTIONS += MODNAME=audio_dlkm
 KBUILD_OPTIONS += BOARD_PLATFORM=$(TARGET_BOARD_PLATFORM)
 KBUILD_OPTIONS += $(AUDIO_SELECT)
-ifeq ($(call is-board-platform-in-list, msmnile gen4),true)
+ifeq ($(call is-board-platform-in-list, msmnile),true)
 KBUILD_OPTIONS += CONFIG_SND_SOC_AUTO=y
 ifneq (,$(filter $(TARGET_BOARD_PLATFORM)$(TARGET_BOARD_SUFFIX), msmnile_gvmq))
 KBUILD_OPTIONS +=CONFIG_SND_SOC_GVM=y
 else
-ifeq ($(call is-board-platform-in-list, gen4),true)
-KBUILD_OPTIONS += CONFIG_SND_SOC_SA8255=m
-else
 KBUILD_OPTIONS += CONFIG_SND_SOC_SA8155=m
-endif
 endif
 endif
 
@@ -170,17 +166,6 @@ LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
 include $(DLKM_DIR)/Build_external_kernelmodule.mk
 
 ###########################################################
-ifneq ($(call is-board-platform-in-list, gen4),true)
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
-LOCAL_MODULE              := coupled_ssr_dlkm.ko
-LOCAL_MODULE_KBUILD_NAME  := dsp/coupled_ssr_dlkm.ko
-LOCAL_MODULE_TAGS         := optional
-LOCAL_MODULE_DEBUG_ENABLE := true
-LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
-include $(DLKM_DIR)/Build_external_kernelmodule.mk
-endif
-###########################################################
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
 LOCAL_MODULE              := audio_prm_dlkm.ko
@@ -198,36 +183,8 @@ LOCAL_MODULE_TAGS         := optional
 LOCAL_MODULE_DEBUG_ENABLE := true
 LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
 include $(DLKM_DIR)/Build_external_kernelmodule.mk
-ifeq ($(call is-board-platform-in-list, gen4),true)
-############################ soc ###############################
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
-LOCAL_MODULE              := pinctrl_lpi_dlkm.ko
-LOCAL_MODULE_KBUILD_NAME  := soc/pinctrl_lpi_dlkm.ko
-LOCAL_MODULE_TAGS         := optional
-LOCAL_MODULE_DEBUG_ENABLE := true
-LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
-include $(DLKM_DIR)/Build_external_kernelmodule.mk
-##########################wcd#################################
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
-LOCAL_MODULE              := wcd9xxx_dlkm.ko
-LOCAL_MODULE_KBUILD_NAME  := asoc/codecs/wcd9xxx_dlkm.ko
-LOCAL_MODULE_TAGS         := optional
-LOCAL_MODULE_DEBUG_ENABLE := true
-LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
-include $(DLKM_DIR)/Build_external_kernelmodule.mk
-########################### ASOC MACHINE ################################
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
-LOCAL_MODULE              := machine_dlkm.ko
-LOCAL_MODULE_KBUILD_NAME  := asoc/spf_machine_dlkm.ko
-LOCAL_MODULE_TAGS         := optional
-LOCAL_MODULE_DEBUG_ENABLE := true
-LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
-include $(DLKM_DIR)/Build_external_kernelmodule.mk
-endif
-ifneq ($(call is-board-platform-in-list, msmnile gen4),true)
+
+ifneq ($(call is-board-platform-in-list, msmnile),true)
 ############################ soc ###############################
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
@@ -266,7 +223,7 @@ LOCAL_MODULE_DEBUG_ENABLE := true
 LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
 include $(DLKM_DIR)/Build_external_kernelmodule.mk
 ###########################  ASOC CODEC ################################
-ifneq ($(call is-board-platform-in-list, msmnile gen4),true)
+ifneq ($(call is-board-platform-in-list, msmnile),true)
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
 LOCAL_MODULE              := wcd_core_dlkm.ko
@@ -325,7 +282,6 @@ LOCAL_MODULE_TAGS         := optional
 LOCAL_MODULE_DEBUG_ENABLE := true
 LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
 include $(DLKM_DIR)/Build_external_kernelmodule.mk
-ifneq ($(call is-board-platform-in-list, gen4),true)
 ########################### ASOC MACHINE ################################
 include $(CLEAR_VARS)
 LOCAL_SRC_FILES           := $(AUDIO_SRC_FILES)
@@ -335,18 +291,7 @@ LOCAL_MODULE_TAGS         := optional
 LOCAL_MODULE_DEBUG_ENABLE := true
 LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
 include $(DLKM_DIR)/Build_external_kernelmodule.mk
-endif
-########################## PCIE DRIVER ################################
-ifeq ($(CONFIG_SND_SOC_PCIE),m)
-include $(CLEAR_VARS)
-LOCAL_SRC_FILES   := $(wildcard $(LOCAL_PATH)/**/*) $(wildcard $(LOCAL_PATH)/*)
-LOCAL_MODULE              := msm_pcm_pcie_dlkm.ko
-LOCAL_MODULE_KBUILD_NAME  := asoc/msm_pcm_pcie_dlkm.ko
-LOCAL_MODULE_TAGS         := optional
-LOCAL_MODULE_DEBUG_ENABLE := true
-LOCAL_MODULE_PATH         := $(KERNEL_MODULES_OUT)
-include $(DLKM_DIR)/Build_external_kernelmodule.mk
-endif
+
 ########################### LPASS-CDC CODEC  ###########################
 ifeq ($(call is-board-platform-in-list, kalama),true)
 include $(CLEAR_VARS)

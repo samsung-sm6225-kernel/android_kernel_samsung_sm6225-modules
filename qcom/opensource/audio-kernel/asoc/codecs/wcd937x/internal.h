@@ -38,6 +38,7 @@ struct wcd937x_priv {
 	int variant;
 	struct snd_soc_component *component;
 	struct device_node *rst_np;
+	struct device_node *pa_en;
 	struct regmap *regmap;
 
 	struct swr_device *rx_swr_dev;
@@ -97,6 +98,7 @@ struct wcd937x_priv {
 	int ana_clk_count;
 	int adc_count;
 	struct mutex ana_tx_clk_lock;
+
 	u8 tx_master_ch_map[WCD937X_MAX_SLAVE_CH_TYPES];
 	bool usbc_hs_status;
 	u32 tx_ch_pwr[MAX_TX_PWR_CH];
@@ -113,6 +115,7 @@ struct wcd937x_micbias_setting {
 
 struct wcd937x_pdata {
 	struct device_node *rst_np;
+	struct device_node *pa_en;
 	struct device_node *rx_slave;
 	struct device_node *tx_slave;
 	struct wcd937x_micbias_setting micbias;

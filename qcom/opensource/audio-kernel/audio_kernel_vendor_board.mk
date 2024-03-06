@@ -1,11 +1,3 @@
-AUDIO_USE_STUB_HAL := false
-ifeq ($(TARGET_USES_QMAA),true)
-ifeq ($(TARGET_USES_QMAA_OVERRIDE_AUDIO), false)
-AUDIO_USE_STUB_HAL := true
-endif
-endif
-
-ifeq ($(AUDIO_USE_STUB_HAL),false)
 AUDIO_DLKM_ENABLE := false
 ifeq ($(TARGET_KERNEL_DLKM_DISABLE), true)
   ifeq ($(TARGET_KERNEL_DLKM_AUDIO_OVERRIDE),true)
@@ -16,7 +8,8 @@ else
 endif
 
 ifeq ($(AUDIO_DLKM_ENABLE), true)
-  ifeq ($(call is-board-platform-in-list,taro kalama bengal monaco msmnile gen4), true)
+ifeq ($(call is-board-platform-in-list,$(TARGET_BOARD_PLATFORM)),true)
+  ifeq ($(call is-board-platform-in-list,taro kalama bengal monaco msmnile), true)
     include vendor/qcom/opensource/audio-kernel/audio_kernel_modules.mk
   endif
   ifeq ($(ENABLE_AUDIO_LEGACY_TECHPACK),true)
