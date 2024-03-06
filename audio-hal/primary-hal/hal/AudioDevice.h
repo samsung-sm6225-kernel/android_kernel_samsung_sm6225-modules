@@ -236,6 +236,9 @@ public:
 #ifdef SEC_AUDIO_CALL
     audio_io_handle_t primary_out_io_handle = AUDIO_IO_HANDLE_NONE;
 #endif
+#ifdef SEC_AUDIO_COMMON
+    std::shared_ptr<StreamOutPrimary> OutGetStream(pal_stream_type_t pal_stream_type);
+#endif
 protected:
     AudioDevice() {}
     std::shared_ptr<AudioVoice> VoiceInit();

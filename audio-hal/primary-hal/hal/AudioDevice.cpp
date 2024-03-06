@@ -821,12 +821,13 @@ static int adev_open_input_stream(struct audio_hw_device *dev,
 	if(speaker_mic) {
 		devices = (audio_devices_t)0x80000080;
 	}
-    
+
     if (factory_test_mic_check_on_off) {
             devices = (audio_devices_t)0x80000004;
             AHAL_ERR("enter: factory_test_mic_check on");
     } else {
-        if(source == AUDIO_SOURCE_CAMCORDER) {
+        if(source == AUDIO_SOURCE_CAMCORDER && devices != AUDIO_DEVICE_IN_WIRED_HEADSET
+           && devices != AUDIO_DEVICE_IN_USB_HEADSET && devices != AUDIO_DEVICE_IN_USB_DEVICE) {
             devices = (audio_devices_t)0x80000004;
             route_to_handset_mic = true ;
         }
@@ -2911,3 +2912,22 @@ closeFile:
 done:
     return ret;
 }
+
+#ifdef SEC_AUDIO_COMMON
+std::shared_ptr<StreamOutPrimary> AudioDevice::OutGetStream(pal_stream_type_t pal_stream_type) {
+    std::shared_ptr<StreamOutPrimary> astream_out = NULL;
+    out_list_mutex.lock();
+    for (int i = 0; i < stream_out_list_.size(); i++) {
+        if (stream_out_list_[i]->streamAttributes_.type == pal_stream_type) {
+            AHAL_VERBOSE("Found stream associated with pal_stream_type");
+            astream_out = stream_out_list_[i];
+            break;
+        }
+    }
+    out_list_mutex.unlock();
+    if (astream_out)
+        AHAL_VERBOSE("astream_out(%p)", astream_out->stream_.get());
+
+    return astream_out;
+}
+#endif
