@@ -12,22 +12,20 @@ KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 M ?= $(shell pwd)
 
 ifeq ($(WLAN_ROOT),)
-# WLAN_ROOT must contain an absolute path (i.e. not a relative path)
-KBUILD_OPTIONS := WLAN_ROOT=$(shell cd $(KERNEL_SRC); readlink -e $(M))
-
-# MODNAME should be qca_cld3_wlan for helium based platform
-ifeq (qca_cld3, $(WLAN_CHIPSET))
-KBUILD_OPTIONS += MODNAME?=$(WLAN_CHIPSET)_wlan
-else
-KBUILD_OPTIONS += MODNAME?=wlan
-endif
-
-#By default build for CLD
-WLAN_SELECT := CONFIG_QCA_CLD_WLAN=m
-KBUILD_OPTIONS += CONFIG_QCA_WIFI_ISOC=0
-KBUILD_OPTIONS += CONFIG_QCA_WIFI_2_0=1
-KBUILD_OPTIONS += $(WLAN_SELECT)
-KBUILD_OPTIONS += $(KBUILD_EXTRA) # Extra config if any
+KBUILD_OPTIONS += \
+    WLAN_ROOT=sm6225-modules/qcom/opensource/wlan/qcacld-3.0 \
+    WLAN_PLATFORM_ROOT=sm6225-modules/qcom/opensource/wlan/platform \
+    WLAN_COMMON_ROOT=cmn \
+    WLAN_COMMON_INC=sm6225-modules/qcom/opensource/wlan/qcacld-3.0/cmn \
+    WLAN_FW_API=sm6225-modules/qcom/opensource/wlan/fw-api \
+    CONFIG_QCA_CLD_WLAN=m \
+    CONFIG_CNSS_QCA6390=y \
+    WLAN_PROFILE=qca6390 \
+    DYNAMIC_SINGLE_CHIP= \
+    MODNAME=qca6390 \
+    DEVNAME=qca6390 \
+    BOARD_PLATFORM=bengal \
+    WLAN_CTRL_NAME=wlan
 endif
 
 all:
